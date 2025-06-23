@@ -53,6 +53,7 @@
         </form>
     </div>
     <script>
+        // === LISTA DE ADMINI A FOST VERIFICATA SI CORECTATA AICI ===
         const adminUsers = {
             'yudenwa16': 'antemie1',
             'andrabanana': '010R1',
@@ -60,6 +61,7 @@
             'skittle': 'skt10023',
             'kinkrar': 'antemie1122'
         };
+
         const loginForm = document.getElementById('login-form');
         const errorMessage = document.getElementById('error-message');
         loginForm.addEventListener('submit', (event) => {
@@ -67,7 +69,6 @@
             const username = loginForm.username.value;
             const password = loginForm.password.value;
             if (adminUsers[username] && adminUsers[username] === password) {
-                // === MODIFICAREA ESTE AICI ===
                 // Salvam numele utilizatorului, nu doar "true"
                 const adminData = { username: username };
                 sessionStorage.setItem('far_admin_user', JSON.stringify(adminData));
