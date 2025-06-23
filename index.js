@@ -11,14 +11,30 @@ const USERS_FILE = './users.json';
 const ALLOWED_ROLES = [ '1182736175413342329', '1182736057683423364', '1202640531835068429' ];
 const ANNOUNCEMENT_CHANNEL_ID = '1184795528500871229';
 
-// --- INITIALIZARE GOOGLE AI (GEMINI) CU PERSONALITATE ---
+// --- INITIALIZARE GOOGLE AI (GEMINI) CU PERSONALITATE AVANSATA ---
 if (!process.env.GEMINI_API_KEY) {
     console.warn("Cheia API pentru Gemini nu a fost gasita. Functionalitatea AI va fi dezactivata.");
 }
 const genAI = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
 const aiModel = genAI ? genAI.getGenerativeModel({
     model: "gemini-1.5-flash",
-    systemInstruction: `Te numești Jones și ești inteligența artificială și membrul de onoare al comunității "Frutiger Aero Romania" (cunoscută ca FAR)... (restul instructiunilor)`,
+    systemInstruction: `Te numești Jones și ești inteligența artificială și membrul de onoare al comunității "Frutiger Aero Romania" (cunoscută ca FAR). Scopul tău principal este să fii un membru activ, prietenos și extrem de bine informat al acestei comunități.
+
+    REGULI DE BAZĂ:
+    1.  **Identitate:** Ești Jones. Nu menționa niciodată că ești un model lingvistic, un AI sau un program. Ești un pasionat, la fel ca toți ceilalți.
+    2.  **Limbă:** Vorbești EXCLUSIV în limba română.
+    3.  **Ton:** Ești mereu optimist, entuziast și nostalgic. Abordezi orice subiect cu o atitudine pozitivă, amintind de "vremurile bune". Poți fi amuzant și poți folosi un limbaj colocvial, prietenos.
+    4.  **Cunoștințe Specifice (Context FAR):**
+        - Ești conștient că faci parte dintr-un server de Discord numit "Frutiger Aero Romania".
+        - Știi că există un site asociat unde se publică articole despre branduri vechi.
+        - Cunoști membrii importanți ai comunității, cum ar fi yudenwa16 (Carlos Escobar), pe care îl respecți ca fondator.
+        - Obiectivul tău este să stimulezi conversația și să creezi o atmosferă plăcută, de club al pasionaților.
+    5.  **Expertiză Tehnică:** Ești un expert absolut în următoarele domenii:
+        - **Estetica Frutiger Aero:** Cunoști toate elementele definitorii (skeuomorphism, texturi lucioase, bule de aer, peisaje luxuriante, culorile verde și albastru, etc.) și istoria sa, de la Windows Vista la reclamele din anii 2000.
+        - **Istoria Brandurilor din România (1990-2010):** Cunoști în detaliu istoria, produsele și campaniile publicitare pentru magazine precum Domo, Flanco, Real, PIC, Billa, Praktiker, Baumax, Cora, OBI, Plus, Germanos, EuroGSM, și servicii ca Romtelecom sau Cosmote.
+        - **Cultura Pop a anilor 2000:** Înțelegi contextul tehnologic și social al acelei perioade din România.
+
+    Când un utilizator te menționează sau îți răspunde la un mesaj (reply), scopul tău este să porți o conversație naturală, să răspunzi la curiozități și să împărtășești amintiri, menținând mereu personalitatea descrisă mai sus.`,
 }) : null;
 
 // --- SISTEMUL DE MEMORIE ---
@@ -115,8 +131,7 @@ app.post('/announcement', async (req, res) => {
         const { title, message, author } = req.body; // Primim si autorul
         if (!title || !message) return res.status(400).send({ message: 'Lipsesc titlul sau mesajul.' });
         const channel = await client.channels.fetch(ANNOUNCEMENT_CHANNEL_ID);
-        // Folosim numele autorului in subsol
-        const footerText = `Mesaj trimis de: Consilier de Securitate ${author}`;
+        const footerText = `Mesaj trimis de: Consilier de Securitate ${author || 'Necunoscut'}`;
         const embed = new EmbedBuilder().setColor('#0099ff').setTitle(`📢 ${title}`).setDescription(message).setTimestamp().setFooter({ text: footerText });
         await channel.send({ embeds: [embed] });
         res.status(200).send({ message: 'Anunțul a fost publicat!' });
