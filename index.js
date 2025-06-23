@@ -34,17 +34,63 @@ const client = new Client({
 });
 client.once('ready', () => { console.log(`[BOT] Bot-ul este online! Conectat ca ${client.user.tag}`); });
 
-// --- GESTIONAREA MESAJELOR: AI & MODERARE ---
+// --- GESTIONAREA MESAJELOR: AI & MODERARE (LOGICA REPARATA) ---
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
-    // --- PARTEA 1: Functionalitatea AI (daca bot-ul este mentionat) ---
+    // --- PARTEA 1: Verificam INTÂI daca este o comanda de moderare ---
+    const authorMember = message.member;
+    const hasPermission = authorMember.roles.cache.some(role => ALLOWED_ROLES.includes(role.id));
+    const targetMember = message.mentions.members.first();
+    const content = message.content.toLowerCase();
+
+    // Conditiile pentru o comanda de moderare valida:
+    // 1. Autorul are permisiuni
+    // 2. A mentionat un alt membru (nu pe sine insusi)
+    if (hasPermission && targetMember && targetMember.id !== authorMember.id) {
+        let commandExecuted = false; 
+
+        try {
+            if (content.includes('kick') || content.includes('da-i kick')) {
+                await targetMember.kick("Acțiune de moderare din chat.");
+                await message.reply(`✅ Gata! L-am dat afară pe ${targetMember.user.tag}.`);
+                commandExecuted = true;
+            } 
+            else if (content.includes('ban') || content.includes('da-i ban')) {
+                await targetMember.ban({ reason: "Acțiune de moderare din chat." });
+                await message.reply(`✅ Gata! I-am dat ban lui ${targetMember.user.tag}. Acesta nu va mai putea reveni.`);
+                commandExecuted = true;
+            } 
+            else if (content.includes('schimbă nickname-ul') || content.includes('schimba nickname-ul')) {
+                const match = message.content.match(/(?:în|in)\s+"([^"]+)"/i);
+                if (match && match[1]) {
+                    const newNickname = match[1];
+                    await targetMember.setNickname(newNickname);
+                    await message.reply(`✅ Gata! Am schimbat nickname-ul lui ${targetMember.user.tag} în "${newNickname}".`);
+                    commandExecuted = true;
+                } else {
+                    await message.reply('Format incorect. Te rog folosește: `schimbă nickname-ul lui @user în "Noul Nickname"`');
+                    return; // Oprim aici pentru a nu activa AI-ul
+                }
+            }
+        } catch (error) {
+            console.error('[MODERATION] Eroare la executarea comenzii:', error);
+            await message.reply(`❌ Nu am putut executa comanda. Verifică dacă am permisiunile necesare sau dacă rolul meu este mai înalt decât al membrului respectiv.`);
+            return; // Oprim si in caz de eroare
+        }
+        
+        // Daca am executat o comanda de moderare, oprim functia aici pentru a nu activa AI-ul
+        if (commandExecuted) {
+            return;
+        }
+    }
+
+
+    // --- PARTEA 2: DACA NU a fost o comanda de moderare, verificam daca este o intrebare pentru AI ---
     if (message.mentions.has(client.user)) {
         if (!aiModel) return message.reply("Modulul AI nu este configurat corect.");
-
         console.log(`[AI] Primit mentiune de la: ${message.author.tag} in canalul ${message.channel.id}`);
         await message.channel.sendTyping();
-
         const channelId = message.channel.id;
         const prompt = message.content.replace(/<@!?\d+>/g, '').trim();
 
@@ -68,45 +114,6 @@ client.on('messageCreate', async message => {
             console.error('[AI] Eroare la generarea raspunsului:', error);
             await message.reply("Oops! Am o mică eroare de sistem și nu pot procesa acum.");
         }
-        return; // Oprim executia aici, deoarece a fost o comanda AI
-    }
-
-    // --- PARTEA 2: Comenzi de Moderare (daca bot-ul NU este mentionat) ---
-    const authorMember = message.member;
-    const hasPermission = authorMember.roles.cache.some(role => ALLOWED_ROLES.includes(role.id));
-    
-    // Daca mesajul nu contine o mentiune si autorul nu are permisiuni, ignoram complet
-    if (!hasPermission) return;
-
-    const targetMember = message.mentions.members.first();
-    // Daca un moderator a scris, dar nu a mentionat pe nimeni, ignoram
-    if (!targetMember) return;
-    
-    const content = message.content.toLowerCase();
-
-    try {
-        if (content.includes('kick') || content.includes('da-i kick')) {
-            await targetMember.kick("Acțiune de moderare din chat.");
-            await message.reply(`✅ Gata! L-am dat afară pe ${targetMember.user.tag}.`);
-        } 
-        else if (content.includes('ban') || content.includes('da-i ban')) {
-            await targetMember.ban({ reason: "Acțiune de moderare din chat." });
-            await message.reply(`✅ Gata! I-am dat ban lui ${targetMember.user.tag}. Acesta nu va mai putea reveni.`);
-        } 
-        else if (content.includes('schimbă nickname-ul') || content.includes('schimba nickname-ul')) {
-            // Cautam textul dintre ghilimele de dupa cuvantul "în" sau "in"
-            const match = message.content.match(/(?:în|in)\s+"([^"]+)"/i);
-            if (match && match[1]) {
-                const newNickname = match[1];
-                await targetMember.setNickname(newNickname);
-                await message.reply(`✅ Gata! Am schimbat nickname-ul lui ${targetMember.user.tag} în "${newNickname}".`);
-            } else {
-                await message.reply('Format incorect. Te rog folosește: `schimbă nickname-ul lui @user în "Noul Nickname"`');
-            }
-        }
-    } catch (error) {
-        console.error('[MODERATION] Eroare la executarea comenzii:', error);
-        await message.reply(`❌ Nu am putut executa comanda. Verifică dacă am permisiunile necesare sau dacă rolul meu este mai înalt decât al membrului respectiv.`);
     }
 });
 
