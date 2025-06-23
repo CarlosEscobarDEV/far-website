@@ -38,17 +38,25 @@ client.once('ready', () => { console.log(`[BOT] Bot-ul este online! Conectat ca 
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
-    // --- PARTEA 1: Verificam INTÂI daca este o comanda de moderare ---
+    const content = message.content.toLowerCase();
     const authorMember = message.member;
     const hasPermission = authorMember.roles.cache.some(role => ALLOWED_ROLES.includes(role.id));
+    
+    // Extragem prima mentiune din mesaj, fie ca e user sau bot
     const targetMember = message.mentions.members.first();
-    const content = message.content.toLowerCase();
 
-    // Conditiile pentru o comanda de moderare valida:
-    // 1. Autorul are permisiuni
-    // 2. A mentionat un alt membru (nu pe sine insusi)
+    // --- LOGICA DE MODERARE ---
+    // Se activeaza doar daca autorul are permisiuni SI a mentionat pe cineva (care nu e el insusi)
     if (hasPermission && targetMember && targetMember.id !== authorMember.id) {
-        let commandExecuted = false; 
+        let commandExecuted = false;
+
+        // Verificam daca botul are permisiunea sa actioneze asupra membrului tinta (rolul botului > rolul tintei)
+        if (authorMember.guild.members.me.roles.highest.position <= targetMember.roles.highest.position) {
+            // Daca se incearca o actiune de moderare, dar nu are permisiunea, trimitem mesaj de eroare si oprim
+            if (content.includes('kick') || content.includes('ban') || content.includes('schimba nickname')) {
+                 return message.reply(`❌ Nu pot executa comanda asupra lui ${targetMember.user.tag}. Asigură-te că rolul meu ("FARAI") este mai sus în lista de roluri decât rolul cel mai înalt al acestui membru.`);
+            }
+        }
 
         try {
             if (content.includes('kick') || content.includes('da-i kick')) {
@@ -58,7 +66,7 @@ client.on('messageCreate', async message => {
             } 
             else if (content.includes('ban') || content.includes('da-i ban')) {
                 await targetMember.ban({ reason: "Acțiune de moderare din chat." });
-                await message.reply(`✅ Gata! I-am dat ban lui ${targetMember.user.tag}. Acesta nu va mai putea reveni.`);
+                await message.reply(`✅ Gata! I-am dat ban lui ${targetMember.user.tag}.`);
                 commandExecuted = true;
             } 
             else if (content.includes('schimbă nickname-ul') || content.includes('schimba nickname-ul')) {
@@ -68,37 +76,26 @@ client.on('messageCreate', async message => {
                     await targetMember.setNickname(newNickname);
                     await message.reply(`✅ Gata! Am schimbat nickname-ul lui ${targetMember.user.tag} în "${newNickname}".`);
                     commandExecuted = true;
-                } else {
-                    await message.reply('Format incorect. Te rog folosește: `schimbă nickname-ul lui @user în "Noul Nickname"`');
-                    return; // Oprim aici pentru a nu activa AI-ul
                 }
             }
+
+            if (commandExecuted) return; // Daca am executat o comanda, oprim aici
         } catch (error) {
             console.error('[MODERATION] Eroare la executarea comenzii:', error);
-            await message.reply(`❌ Nu am putut executa comanda. Verifică dacă am permisiunile necesare sau dacă rolul meu este mai înalt decât al membrului respectiv.`);
-            return; // Oprim si in caz de eroare
-        }
-        
-        // Daca am executat o comanda de moderare, oprim functia aici pentru a nu activa AI-ul
-        if (commandExecuted) {
+            await message.reply(`❌ A apărut o eroare tehnică la executarea comenzii.`);
             return;
         }
     }
-
-
-    // --- PARTEA 2: DACA NU a fost o comanda de moderare, verificam daca este o intrebare pentru AI ---
-    if (message.mentions.has(client.user)) {
+    
+    // --- LOGICA PENTRU AI ---
+    // Se activeaza doar daca botul (si doar el) este mentionat
+    if (message.mentions.has(client.user.id) && message.mentions.members.size === 1) {
         if (!aiModel) return message.reply("Modulul AI nu este configurat corect.");
-        console.log(`[AI] Primit mentiune de la: ${message.author.tag} in canalul ${message.channel.id}`);
+
         await message.channel.sendTyping();
-        const channelId = message.channel.id;
         const prompt = message.content.replace(/<@!?\d+>/g, '').trim();
-
-        if (!conversationHistory.has(channelId)) {
-            conversationHistory.set(channelId, []);
-        }
-        const history = conversationHistory.get(channelId);
-
+        const history = conversationHistory.get(message.channel.id) || [];
+        
         try {
             const chat = aiModel.startChat({ history });
             const result = await chat.sendMessage(prompt);
@@ -107,7 +104,11 @@ client.on('messageCreate', async message => {
             history.push({ role: "user", parts: [{ text: prompt }] });
             history.push({ role: "model", parts: [{ text: text }] });
 
-            if(history.length > 10) conversationHistory.set(channelId, history.slice(-10));
+            if(history.length > 10) {
+                conversationHistory.set(message.channel.id, history.slice(-10));
+            } else {
+                 conversationHistory.set(message.channel.id, history);
+            }
 
             await message.reply(text.substring(0, 2000));
         } catch (error) {
@@ -118,14 +119,13 @@ client.on('messageCreate', async message => {
 });
 
 
-// --- INITIALIZARE SERVER WEB ---
+// --- INITIALIZARE SERVER WEB SI RESTUL API-URILOR ---
 const app = express();
+// ... (restul codului ramane neschimbat)
+// ...
 app.use(express.static('public'));
 app.use(express.json());
 const port = process.env.PORT || 3000;
-
-// --- TOATE API-URILE SI FUNCTIILE DE MAI JOS RAMAN NESCHIMBATE ---
-// ... (restul codului pentru API, citire/scriere fisiere, etc. ramane aici)
 function readJSONFile(filePath) {
     return new Promise((resolve, reject) => {
         fs.readFile(filePath, 'utf8', (err, data) => {
