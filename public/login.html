@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login - FAR</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #D4E5F0;
+            margin: 0;
+            padding: 0;
+        }
+
+        .site-header {
+            background: linear-gradient(to bottom, #1E90FF, #1C86EE, #1874CD);
+            padding: 10px 2rem;
+            color: white;
+            border-bottom: 2px solid #00008B;
+        }
+        .logo {
+            font-weight: 900;
+            font-size: 2.5rem;
+            letter-spacing: -2px;
+        }
+        .logo span {
+            background: linear-gradient(to right, #FFA500, #FF4500);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: inline-block;
+        }
+        .main-nav a {
+            padding: 5px 10px;
+            border-radius: 5px;
+            transition: background-color 0.2s;
+        }
+        .main-nav a:hover {
+            background-color: rgba(255,255,255,0.2);
+        }
+
+        .content-area {
+            padding: 2rem;
+            background-color: white;
+            max-width: 1152px;
+            margin: 2rem auto;
+            border-radius: 8px;
+            box-shadow: 0 5px 25px rgba(0,0,0,0.15);
+        }
+        
+        .frutiger-input {
+            border: 1px solid #ACA899;
+            padding: 0.75rem;
+            border-radius: 5px;
+            background-color: #F0F0F0;
+            transition: all 0.2s;
+        }
+        .frutiger-input:focus {
+            outline: none;
+            border-color: #0055E3;
+            background-color: white;
+        }
+
+        .login-button {
+            background: linear-gradient(to bottom, #4CAF50, #45a049);
+            color: white;
+            font-weight: bold;
+            padding: 0.75rem;
+            border: 1px solid #3e8e41;
+            border-radius: 5px;
+            transition: all 0.2s;
+        }
+        .login-button:hover {
+            background: linear-gradient(to bottom, #45a049, #4CAF50);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="site-header">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <a href="/" class="logo">frutiger <span>AERO</span></a>
+            <nav class="main-nav flex space-x-4 text-lg font-bold">
+                <a href="/">Acasă</a>
+                <a href="/#stores">Arhive</a>
+                <a href="/login.html">Portal Admin</a>
+            </nav>
+        </div>
+    </header>
+    
+    <!-- Zona de continut principal -->
+    <div class="content-area max-w-md">
+        <div class="text-center mb-6">
+            <img src="/logo.png" alt="Logo FAR" class="mx-auto mb-4 w-24 h-24 object-contain">
+            <h1 class="text-3xl font-bold text-gray-900">Portal Admin</h1>
+            <p class="text-gray-700">Autentificare necesară.</p>
+        </div>
+
+        <div id="error-message" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative mb-6 text-center"></div>
+
+        <form id="login-form" class="space-y-6">
+            <div>
+                <label for="username" class="block text-sm font-bold text-gray-700 mb-2">Utilizator</label>
+                <input type="text" id="username" required class="w-full frutiger-input">
+            </div>
+            <div>
+                <label for="password" class="block text-sm font-bold text-gray-700 mb-2">Parolă</label>
+                <input type="password" id="password" required class="w-full frutiger-input">
+            </div>
+            <div>
+                <button type="submit" class="w-full login-button">
+                    ACCES
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // === LISTA DE ADMINI A FOST ACTUALIZATA AICI ===
+        const adminUsers = {
+            'yudenwa16': 'antemie1',
+            'andrabanana': '010R1',
+            'nfornuggies': '22o102Y',
+            'skittle': 'skt10023',
+            'kinkrar': 'antemie1122'
+        };
+
+        const loginForm = document.getElementById('login-form');
+        const errorMessage = document.getElementById('error-message');
+
+        loginForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const username = loginForm.username.value;
+            const password = loginForm.password.value;
+
+            if (adminUsers[username] && adminUsers[username] === password) {
+                sessionStorage.setItem('far_admin_logged_in', 'true');
+                window.location.href = '/admin.html';
+            } else {
+                errorMessage.textContent = 'Utilizator sau parolă incorectă.';
+                errorMessage.classList.remove('hidden');
+            }
+        });
+    </script>
+</body>
+</html>

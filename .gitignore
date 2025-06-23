@@ -1,0 +1,5 @@
+# Ignora folderul cu pachete instalate
+node_modules
+
+# Ignora fisierul cu variabile secrete
+.env

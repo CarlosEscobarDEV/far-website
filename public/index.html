@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frutiger Aero România</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #D4E5F0;
+            margin: 0;
+            padding: 0;
+        }
+
+        .site-header {
+            background: linear-gradient(to bottom, #1E90FF, #1C86EE, #1874CD);
+            padding: 10px 2rem;
+            color: white;
+            border-bottom: 2px solid #00008B;
+            position: relative;
+            overflow: hidden;
+        }
+        .logo { font-weight: 900; font-size: 2.5rem; letter-spacing: -2px; }
+        .logo span { background: linear-gradient(to right, #FFA500, #FF4500); -webkit-background-clip: text; -webkit-text-fill-color: transparent; display: inline-block; }
+        .main-nav a { padding: 5px 10px; border-radius: 5px; transition: background-color 0.2s; }
+        .main-nav a:hover { background-color: rgba(255,255,255,0.2); }
+
+        .fish { position: absolute; width: 50px; height: auto; animation: swim 20s linear infinite; opacity: 0.8; pointer-events: none; }
+        @keyframes swim { from { transform: translateX(-100px); } to { transform: translateX(100vw); } }
+        .fish2 { animation-duration: 25s; animation-delay: 5s; }
+        .fish3 { animation-duration: 15s; animation-delay: 2s; }
+
+        .hero-banner {
+            height: 350px;
+            background-image: url('https://images.pexels.com/photos/167699/pexels-photo-167699.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1');
+            background-size: cover;
+            background-position: center;
+            position: relative;
+            display: flex;
+            align-items: center;
+            padding: 2rem;
+        }
+        .hero-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(to right, rgba(0,0,0,0.6), rgba(0,0,0,0)); }
+        .hero-text { position: relative; z-index: 2; color: white; text-shadow: 0 2px 5px rgba(0,0,0,0.5); }
+        .bubble { position: absolute; right: 50px; top: 50%; transform: translateY(-50%); width: 100px; height: 100px; background-color: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; }
+        
+        .frutiger-discord-button {
+            display: inline-block;
+            margin-top: 1rem;
+            background: linear-gradient(to bottom, #7289DA, #5865F2);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 5px;
+            font-weight: bold;
+            transition: all 0.2s;
+            border: 1px solid #4e5d94;
+        }
+        .frutiger-discord-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        .content-area {
+            padding: 2rem;
+            background-color: white;
+            max-width: 1152px;
+            margin: -50px auto 2rem auto;
+            position: relative;
+            z-index: 10;
+            border-radius: 8px;
+            box-shadow: 0 5px 25px rgba(0,0,0,0.15);
+        }
+        .content-title { font-size: 2.5rem; font-weight: 900; border-bottom: 3px solid #E0E0E0; padding-bottom: 10px; margin-bottom: 2rem; text-align: center; }
+        .store-card { display: flex; flex-direction: column; gap: 1.5rem; align-items: center; background-color: #F8F9FA; padding: 1.5rem; border-radius: 8px; border: 1px solid #DEE2E6; margin-bottom: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        @media (min-width: 768px) { .store-card { flex-direction: row; } }
+        .store-image-container { flex-shrink: 0; width: 150px; height: 100px; display: flex; align-items: center; justify-content: center; background-color: #FFFFFF; border-radius: 8px; overflow: hidden; border: 1px solid #E9ECEF; padding: 5px; }
+        .store-image { max-width: 100%; max-height: 100%; object-fit: contain; }
+        .store-details { flex-grow: 1; text-align: center; }
+        @media (min-width: 768px) { .store-details { text-align: left; } }
+        .store-title { font-size: 1.75rem; font-weight: 900; margin-bottom: 0.5rem; }
+        .store-description { color: #495057; margin-bottom: 1rem; }
+        .store-button { display: inline-block; background: linear-gradient(to bottom, #1E90FF, #1C86EE); color: white; padding: 0.5rem 1rem; border-radius: 5px; font-weight: bold; transition: all 0.2s; }
+        .store-button:hover { transform: scale(1.05); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .site-footer { text-align: center; padding: 1rem; color: #6C757D; font-size: 0.9rem; margin-top: auto; }
+    </style>
+</head>
+<body class="flex flex-col">
+
+    <!-- Header -->
+    <header class="site-header">
+        <svg class="fish" style="top: 20%;" viewBox="0 0 100 50"><path d="M99,25 C99,38.8 76.8,50 50,50 C23.2,50 1,38.8 1,25 C1,11.2 23.2,0 50,0 C76.8,0 99,11.2 99,25 Z" fill="#FF4500"></path><polygon points="10,25 0,15 0,35" fill="#FF4500"></polygon></svg>
+        <svg class="fish fish2" style="top: 50%; width: 70px;" viewBox="0 0 100 50"><path d="M99,25 C99,38.8 76.8,50 50,50 C23.2,50 1,38.8 1,25 C1,11.2 23.2,0 50,0 C76.8,0 99,11.2 99,25 Z" fill="#4682B4"></path><polygon points="10,25 0,15 0,35" fill="#4682B4"></polygon></svg>
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <a href="/" class="logo">frutiger <span>AERO</span></a>
+            <nav id="main-navigation" class="main-nav flex space-x-4 text-lg font-bold items-center">
+                <a href="/">Acasă</a>
+                <a href="/login.html">Portal Admin</a>
+                <a href="#stores">Arhive</a>
+                <div id="user-nav-section" class="flex space-x-4 items-center"></div>
+            </nav>
+        </div>
+    </header>
+    
+    <!-- Banner -->
+    <div class="hero-banner">
+        <div class="hero-overlay"></div>
+        <div class="hero-text max-w-6xl mx-auto w-full">
+            <h1 class="text-6xl font-black">Bun venit!</h1>
+            <p class="text-2xl">Explorează arhivele brandurilor ce au definit o eră.</p>
+            <a href="https://discord.gg/G2V2yyuV5s" target="_blank" class="frutiger-discord-button">Alătură-te Comunității pe Discord!</a>
+        </div>
+        <div class="bubble"></div>
+    </div>
+
+    <!-- Zona de continut principal cu lista de magazine -->
+    <div id="stores" class="content-area">
+        <h2 class="content-title">Arhivele Magazinelor</h2>
+        <div id="stores-list">
+            <!-- Lista completă de magazine cu imagini locale -->
+            <div class="store-card"><div class="store-image-container"><img src="/images/real.png" alt="Logo Real" class="store-image"></div><div class="store-details"><h3 class="store-title">Hypermarket Real</h3><p class="store-description">Cumpărăturile de weekend însemnau o vizită la Real, un univers al abundenței unde găseai absolut orice, de la electronice la pui la rotisor.</p><a href="/category.html?cat=hypermarket-real&name=Hypermarket%20Real" class="store-button">Vezi Arhiva &rarr;</a></div></div>
+            <div class="store-card"><div class="store-image-container"><img src="/images/pic.png" alt="Logo PIC" class="store-image"></div><div class="store-details"><h3 class="store-title">PIC Hypermarket</h3><p class="store-description">Unul dintre primii giganți cu capital românesc, PIC a fost un fenomen. Prețurile mici și magazinele imense au atras mulțimi.</p><a href="/category.html?cat=pic-hypermarket&name=PIC%20Hypermarket" class="store-button">Vezi Arhiva &rarr;</a></div></div>
+            <div class="store-card"><div class="store-image-container"><img src="/images/domo.png" alt="Logo Domo" class="store-image"></div><div class="store-details"><h3 class="store-title">Domo Romania</h3><p class="store-description">Gigantul electrocasnicelor unde răsfoiam cataloage lucioase pline de tehnologie. O vizită la Domo era o fereastră către viitorul high-tech.</p><a href="/category.html?cat=domo-romania&name=Domo%20Romania" class="store-button">Vezi Arhiva &rarr;</a></div></div>
+            <div class="store-card"><div class="store-image-container"><img src="/images/cosmote.png" alt="Logo Cosmote" class="store-image"></div><div class="store-details"><h3 class="store-title">Cosmote Romania</h3><p class="store-description">Cu broasca țestoasă și delfinul, Cosmote a adus libertatea de a vorbi la prețuri accesibile, democratizând accesul la telefonia mobilă pentru mulți tineri.</p><a href="/category.html?cat=cosmote-romania&name=Cosmote%20Romania" class="store-button">Vezi Arhiva &rarr;</a></div></div>
+            <div class="store-card"><div class="store-image-container"><img src="/images/flanco.png" alt="Logo Flanco" class="store-image"></div><div class="store-details"><h3 class="store-title">Flanco & Flanco World</h3><p class="store-description">De la magazinul clasic de electronice la conceptul "World", Flanco a fost mereu o destinație pentru a descoperi cele mai noi gadget-uri.</p><a href="/category.html?cat=flanco&name=Flanco" class="store-button">Vezi Arhiva &rarr;</a></div></div>
+            <div class="store-card"><div class="store-image-container"><img src="/images/praktiker.png" alt="Logo Praktiker" class="store-image"></div><div class="store-details"><h3 class="store-title">Praktiker Romania</h3><p class="store-description">Cu reclamele sale pline de energie, Praktiker ne-a convins pe toți că putem fi meșteri în propria casă. Magazinul unde ideile de renovare prindeau viață.</p><a href="/category.html?cat=praktiker-romania&name=Praktiker%20Romania" class="store-button">Vezi Arhiva &rarr;</a></div></div>
+            <div class="store-card"><div class="store-image-container"><img src="/images/spar.png" alt="Logo SPAR" class="store-image"></div><div class="store-details"><h3 class="store-title">SPAR Romania</h3><p class="store-description">Supermarketurile SPAR, cu bradul lor verde distinctiv, au adus o alternativă europeană în retailul alimentar local, cunoscute pentru produsele proaspete.</p><a href="/category.html?cat=spar-romania&name=SPAR%20Romania" class="store-button">Vezi Arhiva &rarr;</a></div></div>
+            <div class="store-card"><div class="store-image-container"><img src="/images/penny.png" alt="Logo Penny" class="store-image"></div><div class="store-details"><h3 class="store-title">Penny Market XXL</h3><p class="store-description">Înainte de formatul actual, Penny a experimentat cu magazine de tip XXL, oferind o gamă largă de produse la prețuri de discount, într-un spațiu vast.</p><a href="/category.html?cat=penny-market-xxl&name=Penny%20Market%20XXL" class="store-button">Vezi Arhiva &rarr;</a></div></div>
+            <div class="store-card"><div class="store-image-container"><img src="/images/billa.png" alt="Logo Billa" class="store-image"></div><div class="store-details"><h3 class="store-title">Billa Romania</h3><p class="store-description">Supermarketul de cartier cu punga galbenă iconică și produsele marca Clever. Un loc familiar, de încredere pentru cumpărăturile rapide.</p><a href="/category.html?cat=billa-romania&name=Billa%20Romania" class="store-button">Vezi Arhiva &rarr;</a></div></div>
+            <div class="store-card"><div class="store-image-container"><img src="/images/baumax.png" alt="Logo Baumax" class="store-image"></div><div class="store-details"><h3 class="store-title">Baumax Romania</h3><p class="store-description">Concurentul direct al Praktiker, Baumax oferea o alternativă pentru toți cei pasionați de bricolaj, grădinărit și amenajări interioare.</p><a href="/category.html?cat=baumax-romania&name=Baumax%20Romania" class="store-button">Vezi Arhiva &rarr;</a></div></div>
+            <div class="store-card"><div class="store-image-container"><img src="/images/romtelecom.png" alt="Logo Romtelecom" class="store-image"></div><div class="store-details"><h3 class="store-title">Romtelecom</h3><p class="store-description">Sunetul modemului dial-up este coloana sonoră a primilor pași pe internet. "Click!" a fost parola care ne-a deschis poarta către universul digital.</p><a href="/category.html?cat=romtelecom-romania&name=Romtelecom%20Romania" class="store-button">Vezi Arhiva &rarr;</a></div></div>
+            <div class="store-card"><div class="store-image-container"><img src="/images/cora.png" alt="Logo Cora" class="store-image"></div><div class="store-details"><h3 class="store-title">Cora</h3><p class="store-description">Hypermarketul unde te puteai pierde printre raioane. Cunoscut pentru varietatea sa imensă și pentru produsele de patiserie proaspete, Cora era o destinație completă.</p><a href="/category.html?cat=cora&name=Cora" class="store-button">Vezi Arhiva &rarr;</a></div></div>
+            <div class="store-card"><div class="store-image-container"><img src="/images/obi.png" alt="Logo OBI" class="store-image"></div><div class="store-details"><h3 class="store-title">OBI Romania</h3><p class="store-description">Un alt jucător important pe piața de bricolaj, OBI era recunoscut pentru mascota sa, castorul portocaliu, și pentru gama variată de produse pentru casă și grădină.</p><a href="/category.html?cat=obi-romania&name=Obi%20Romania" class="store-button">Vezi Arhiva &rarr;</a></div></div>
+            <div class="store-card"><div class="store-image-container"><img src="/images/plus.png" alt="Logo Plus" class="store-image"></div><div class="store-details"><h3 class="store-title">Plus Discount</h3><p class="store-description">Unul dintre primii discounteri de pe piața românească, Plus era locul pentru oferte imbatabile și produse simple, la prețuri extrem de competitive.</p><a href="/category.html?cat=plus-discount&name=Plus%20Discount" class="store-button">Vezi Arhiva &rarr;</a></div></div>
+            <div class="store-card"><div class="store-image-container"><img src="/images/eurogsm.png" alt="Logo EuroGSM" class="store-image"></div><div class="store-details"><h3 class="store-title">Euro GSM</h3><p class="store-description">Un pionier în retailul de telefonie mobilă, Euro GSM a fost unul din primele locuri de unde puteai cumpăra un telefon mobil sau accesorii.</p><a href="/category.html?cat=euro-gsm&name=Euro%20GSM" class="store-button">Vezi Arhiva &rarr;</a></div></div>
+            <div class="store-card"><div class="store-image-container"><img src="/images/germanos.png" alt="Logo Germanos" class="store-image"></div><div class="store-details"><h3 class="store-title">Germanos</h3><p class="store-description">Un punct de referință pentru telefoane, accesorii și servicii de telecomunicații, prezent în toate marile centre comerciale.</p><a href="/category.html?cat=germanos&name=Germanos" class="store-button">Vezi Arhiva &rarr;</a></div></div>
+            <div class="store-card"><div class="store-image-container"><img src="/images/demax.png" alt="Logo Demax" class="store-image"></div><div class="store-details"><h3 class="store-title">Demax Market</h3><p class="store-description">Un lanț local de magazine care a lăsat o amprentă în comunitățile în care a activat, amintind de o perioadă a comerțului mai personal.</p><a href="/category.html?cat=demax-market&name=Demax%20Market" class="store-button">Vezi Arhiva &rarr;</a></div></div>
+            <div class="store-card"><div class="store-image-container"><img src="/images/profi.png" alt="Logo Profi" class="store-image"></div><div class="store-details"><h3 class="store-title">Arhiva PROFI</h3><p class="store-description">Înainte de a deveni rețeaua extinsă de azi, Profi a avut mai multe identități vizuale. Aici explorăm logo-urile și formatele sale mai vechi.</p><a href="/category.html?cat=arhiva-profi&name=Arhiva%20PROFI" class="store-button">Vezi Arhiva &rarr;</a></div></div>
+            <div class="store-card"><div class="store-image-container"><img src="/images/brico.png" alt="Logo Brico Store" class="store-image"></div><div class="store-details"><h3 class="store-title">Brico Store</h3><p class="store-description">Cunoscut și ca Bricostore, a fost un nume de referință în domeniul bricolajului, oferind soluții pentru orice proiect de amenajare.</p><a href="/category.html?cat=brico-store&name=Brico%20Store" class="store-button">Vezi Arhiva &rarr;</a></div></div>
+        </div>
+    </div>
+    
+    <!-- Footer nou fara link de admin -->
+    <footer class="site-footer">
+        <p>&copy; 2024 Frutiger Aero Romania. Toate drepturile rezervate.</p>
+    </footer>
+    
+    <script>
+        const userNavSection = document.getElementById('user-nav-section');
+        function updateHeader() {
+            const userData = localStorage.getItem('far_user');
+            if (userData) {
+                const currentUser = JSON.parse(userData);
+                userNavSection.innerHTML = `
+                    <span class="text-white/80 text-base">Salut, ${currentUser.username}!</span>
+                    <a href="#" id="logout-button" class="text-base cursor-pointer hover:bg-red-500/50 px-3 py-1 rounded-md">Logout</a>
+                `;
+                document.getElementById('logout-button').addEventListener('click', (e) => {
+                    e.preventDefault();
+                    localStorage.removeItem('far_user');
+                    window.location.reload();
+                });
+            } else {
+                userNavSection.innerHTML = `
+                    <a href="/user-login.html">Login</a>
+                    <a href="/register.html">Înregistrare</a>
+                `;
+            }
+        }
+        document.addEventListener('DOMContentLoaded', updateHeader);
+    </script>
+</body>
+</html>

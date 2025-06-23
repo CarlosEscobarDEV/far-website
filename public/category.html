@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Articole - FAR</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #D4E5F0;
+            margin: 0;
+            padding: 0;
+        }
+
+        .site-header {
+            background: linear-gradient(to bottom, #1E90FF, #1C86EE, #1874CD);
+            padding: 10px 2rem;
+            color: white;
+            border-bottom: 2px solid #00008B;
+        }
+        .logo {
+            font-weight: 900;
+            font-size: 2.5rem;
+            letter-spacing: -2px;
+        }
+        .logo span {
+            background: linear-gradient(to right, #FFA500, #FF4500);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: inline-block;
+        }
+        .main-nav a {
+            padding: 5px 10px;
+            border-radius: 5px;
+            transition: background-color 0.2s;
+        }
+        .main-nav a:hover {
+            background-color: rgba(255,255,255,0.2);
+        }
+
+        .content-area {
+            padding: 2rem;
+            background-color: white;
+            max-width: 1152px;
+            margin: 2rem auto;
+            border-radius: 8px;
+            box-shadow: 0 5px 25px rgba(0,0,0,0.15);
+        }
+        .content-title {
+            font-size: 2.5rem;
+            font-weight: 900;
+            border-bottom: 3px solid #E0E0E0;
+            padding-bottom: 5px;
+            margin-bottom: 1.5rem;
+        }
+        
+        /* Sectiunea de detalii a categoriei */
+        .category-details {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            align-items: center;
+        }
+        @media (min-width: 768px) {
+            .category-details {
+                flex-direction: row;
+            }
+        }
+        .category-main-image {
+            width: 100%;
+            max-width: 300px;
+            height: auto;
+            border-radius: 8px;
+            object-fit: contain;
+            flex-shrink: 0;
+        }
+        .category-description {
+            font-size: 1.1rem;
+            color: #343a40;
+            line-height: 1.6;
+        }
+
+        .article-card {
+            background-color: #F8F8F8;
+            border: 1px solid #E0E0E0;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .article-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="site-header">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <a href="/" class="logo">frutiger <span>AERO</span></a>
+            <nav id="main-navigation" class="main-nav flex space-x-4 text-lg font-bold items-center"></nav>
+        </div>
+    </header>
+    
+    <!-- Zona de continut principal -->
+    <main class="content-area">
+        <h1 id="category-title" class="content-title text-gray-800">Se încarcă...</h1>
+
+        <!-- SECTIUNEA NOUA PENTRU DETALIILE CATEGORIEI -->
+        <section id="category-details-container" class="border-b border-gray-300 pb-8 mb-8">
+            <!-- Continutul va fi injectat de JavaScript -->
+        </section>
+        
+        <h2 class="text-2xl font-bold mb-6">Articole în această categorie</h2>
+        <!-- Grila de articole -->
+        <div id="article-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Articolele vor fi incarcate aici -->
+        </div>
+    </main>
+
+    <script>
+        const navigation = document.getElementById('main-navigation');
+        const urlParams = new URLSearchParams(window.location.search);
+        const categoryId = urlParams.get('cat');
+        const categoryName = urlParams.get('name') || 'Articole';
+
+        // Baza de date locala pentru detaliile categoriilor
+        const categoryDetails = {
+            'domo-romania': {
+                description: 'Gigantul electrocasnicelor unde răsfoiam cataloage lucioase pline de tehnologie. Un nume de referință pentru oricine dorea să-și modernizeze casa, DOMO era o fereastră către viitorul high-tech, plin de ecrane cu plasmă și sisteme audio impunătoare.',
+                imageUrl: '/images/domo.png'
+            },
+            'hypermarket-real': {
+                description: 'Cumpărăturile de weekend însemnau o vizită la Real. De la galantare infinite și jucării la mirosul de pui la rotisor, totul părea o aventură într-un univers al abundenței. Era mai mult decât un magazin, era o destinație pentru întreaga familie.',
+                imageUrl: '/images/real.png'
+            },
+            'pic-hypermarket': {
+                description: 'Unul dintre primii giganți cu capital românesc, PIC a fost un fenomen național. Prețurile extrem de mici și magazinele imense au atras mulțimi, lăsând o amintire puternică în memoria colectivă a comerțului autohton.',
+                imageUrl: '/images/pic.png'
+            },
+             'billa-romania': {
+                description: 'Supermarketul de cartier cu punga galbenă iconică și produsele marca Clever. Un loc familiar, de încredere pentru cumpărăturile rapide de zi cu zi, Billa a fost o prezență constantă în peisajul urban românesc.',
+                imageUrl: '/images/billa.png'
+            },
+            // Poti adauga aici descrieri pentru TOATE celelalte categorii
+        };
+
+        // Functia care actualizeaza meniul de navigare
+        function updateHeader() {
+            const userData = localStorage.getItem('far_user');
+            if (userData) {
+                const currentUser = JSON.parse(userData);
+                navigation.innerHTML = `
+                    <a href="/">Acasă</a>
+                    <span class="text-white/80 text-base">Salut, ${currentUser.username}!</span>
+                    <a href="#" id="logout-button" class="text-base cursor-pointer hover:bg-red-500/50 px-3 py-1 rounded-md">Logout</a>
+                `;
+                document.getElementById('logout-button').addEventListener('click', (e) => {
+                    e.preventDefault();
+                    localStorage.removeItem('far_user');
+                    window.location.reload();
+                });
+            } else {
+                 navigation.innerHTML = `
+                    <a href="/">Acasă</a>
+                    <a href="/user-login.html">Login</a>
+                    <a href="/register.html">Înregistrare</a>
+                `;
+            }
+        }
+
+        // Functia care populeaza sectiunea de detalii a categoriei
+        function renderCategoryDetails() {
+            const container = document.getElementById('category-details-container');
+            const details = categoryDetails[categoryId];
+
+            if (details) {
+                container.innerHTML = `
+                    <div class="category-details">
+                        <img src="${details.imageUrl}" alt="Logo ${categoryName}" class="category-main-image">
+                        <p class="category-description">${details.description}</p>
+                    </div>
+                `;
+            } else {
+                 container.innerHTML = '<p>Nu există o descriere pentru această categorie.</p>';
+            }
+        }
+        
+        // Functia care preia si afiseaza articolele
+        async function fetchArticles() {
+            const articleGrid = document.getElementById('article-grid');
+            if (!categoryId) {
+                articleGrid.innerHTML = '<p>Categorie invalidă.</p>';
+                return;
+            }
+            try {
+                const response = await fetch(`/api/articles?category=${categoryId}`);
+                const articles = await response.json();
+                if (articles.length === 0) {
+                    articleGrid.innerHTML = '<p class="col-span-full text-center">Niciun articol în această categorie.</p>';
+                    return;
+                }
+                articleGrid.innerHTML = '';
+                articles.forEach(article => {
+                    const articleElement = document.createElement('a');
+                    articleElement.href = `/article.html?id=${article.id}`;
+                    articleElement.className = 'article-card block';
+                    articleElement.innerHTML = `
+                        <img src="${article.imageUrl}" alt="Imagine articol" class="w-full h-48 object-cover">
+                        <div class="p-4">
+                            <h3 class="font-bold text-xl mb-2">${article.title}</h3>
+                            <p class="text-gray-600 text-sm mb-4">${article.content.substring(0, 100)}...</p>
+                            <span class="text-xs text-gray-500">${article.author} - ${article.date}</span>
+                        </div>
+                    `;
+                    articleGrid.appendChild(articleElement);
+                });
+            } catch (error) {
+                articleGrid.innerHTML = '<p class="col-span-full text-center text-red-500">Eroare la încărcarea articolelor.</p>';
+            }
+        }
+
+        // La incarcarea paginii, rulam toate functiile necesare
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('category-title').textContent = decodeURIComponent(categoryName);
+            document.title = `${decodeURIComponent(categoryName)} - FAR`;
+            
+            updateHeader();
+            renderCategoryDetails();
+            fetchArticles();
+        });
+    </script>
+</body>
+</html>

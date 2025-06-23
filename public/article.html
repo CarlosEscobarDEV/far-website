@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Articol - FAR</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #D4E5F0;
+            margin: 0;
+            padding: 0;
+        }
+
+        .site-header {
+            background: linear-gradient(to bottom, #1E90FF, #1C86EE, #1874CD);
+            padding: 10px 2rem;
+            color: white;
+            border-bottom: 2px solid #00008B;
+        }
+        .logo {
+            font-weight: 900;
+            font-size: 2.5rem;
+            letter-spacing: -2px;
+        }
+        .logo span {
+            background: linear-gradient(to right, #FFA500, #FF4500);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: inline-block;
+        }
+        .main-nav a {
+            padding: 5px 10px;
+            border-radius: 5px;
+            transition: background-color 0.2s;
+        }
+        .main-nav a:hover {
+            background-color: rgba(255,255,255,0.2);
+        }
+
+        .content-area {
+            padding: 2rem;
+            background-color: white;
+            max-width: 1152px;
+            margin: 2rem auto;
+            border-radius: 8px;
+            box-shadow: 0 5px 25px rgba(0,0,0,0.15);
+        }
+        .content-title {
+            font-size: 2.5rem;
+            font-weight: 900;
+            border-bottom: 3px solid #E0E0E0;
+            padding-bottom: 5px;
+            margin-bottom: 1.5rem;
+        }
+        
+        .frutiger-input, .frutiger-textarea {
+            border: 1px solid #ACA899;
+            padding: 0.75rem;
+            border-radius: 5px;
+            background-color: #F0F0F0;
+            transition: all 0.2s;
+            width: 100%;
+        }
+        .frutiger-input:focus, .frutiger-textarea:focus {
+            outline: none;
+            border-color: #0055E3;
+            background-color: white;
+        }
+
+        .post-button {
+            background: linear-gradient(to bottom, #4CAF50, #45a049);
+            color: white;
+            font-weight: bold;
+            padding: 0.5rem 1rem;
+            border: 1px solid #3e8e41;
+            border-radius: 5px;
+            transition: all 0.2s;
+        }
+        .post-button:hover {
+            background: linear-gradient(to bottom, #45a049, #4CAF50);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="site-header">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <a href="/" class="logo">frutiger <span>AERO</span></a>
+            <!-- Navigatia se va schimba in functie de statusul de login -->
+            <nav id="main-navigation" class="main-nav flex space-x-4 text-lg font-bold items-center">
+                <a href="/">Acasă</a>
+                <a href="/user-login.html">Login</a>
+                <a href="/register.html">Înregistrare</a>
+            </nav>
+        </div>
+    </header>
+    
+    <!-- Zona de continut principal -->
+    <main id="main-content" class="content-area">
+        <!-- Articolul va fi incarcat aici -->
+        <div id="article-container">
+            <p class="text-center font-semibold text-lg">Se încarcă articolul...</p>
+        </div>
+
+        <!-- Sectiunea de comentarii va fi incarcata aici -->
+        <div id="comments-section" class="mt-12">
+            <!-- Continut generat de JS -->
+        </div>
+    </main>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const articleId = urlParams.get('id');
+        const articleContainer = document.getElementById('article-container');
+        const commentsSection = document.getElementById('comments-section');
+        const navigation = document.getElementById('main-navigation');
+        let currentUser = null;
+
+        // --- FUNCTII PENTRU GESTIONAREA UI ---
+        
+        function updateHeader() {
+            const userData = localStorage.getItem('far_user');
+            if (userData) {
+                currentUser = JSON.parse(userData);
+                navigation.innerHTML = `
+                    <span class="text-white">Salut, ${currentUser.username}!</span>
+                    <a href="#" id="logout-button" class="cursor-pointer hover:bg-red-500/50">Logout</a>
+                `;
+                document.getElementById('logout-button').addEventListener('click', (e) => {
+                    e.preventDefault();
+                    localStorage.removeItem('far_user');
+                    window.location.reload();
+                });
+            } else {
+                // Meniul default este deja in HTML
+            }
+        }
+
+        function renderCommentsSection(comments) {
+            commentsSection.innerHTML = `
+                <h2 class="content-title">Comentarii (${comments.length})</h2>
+                <form id="comment-form" class="mb-8 space-y-4">
+                    <input type="text" id="comment-author" placeholder="Numele tău" required class="frutiger-input ${currentUser ? 'hidden' : ''}">
+                    <textarea id="comment-content" placeholder="Scrie un comentariu..." required rows="4" class="frutiger-textarea"></textarea>
+                    <button type="submit" class="post-button">Postează Comentariu</button>
+                </form>
+                <div id="comments-list" class="space-y-6">
+                    ${comments.length > 0 ? comments.map(createCommentHTML).join('') : '<p>Fii primul care lasă un comentariu!</p>'}
+                </div>
+            `;
+            document.getElementById('comment-form').addEventListener('submit', handleCommentSubmit);
+        }
+
+        function createCommentHTML(comment) {
+            return `
+                <div class="comment-card border-b border-gray-200 pb-4">
+                    <div class="flex justify-between items-center mb-1">
+                        <p class="font-bold text-gray-900">${comment.author}</p>
+                        <p class="text-xs text-gray-500">${comment.date}</p>
+                    </div>
+                    <p class="text-gray-800" style="white-space: pre-wrap;">${comment.content}</p>
+                </div>
+            `;
+        }
+        
+        async function handleCommentSubmit(e) {
+            e.preventDefault();
+            const authorInput = document.getElementById('comment-author');
+            const contentInput = document.getElementById('comment-content');
+
+            // Folosim numele utilizatorului logat, sau valoarea din input daca nu e logat
+            const authorName = currentUser ? currentUser.username : authorInput.value;
+
+            if (!authorName) {
+                alert('Te rog introdu un nume.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/comments/${articleId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ author: authorName, content: contentInput.value })
+                });
+                if (!response.ok) throw new Error('Comentariul nu a putut fi trimis.');
+                const savedComment = await response.json();
+                
+                const commentsList = document.getElementById('comments-list');
+                if (commentsList.querySelector('p')) { commentsList.innerHTML = ''; }
+                commentsList.insertAdjacentHTML('afterbegin', createCommentHTML(savedComment));
+                e.target.reset();
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        // --- INCARCAREA PAGINII ---
+        async function loadPageData() {
+            if (!articleId) {
+                articleContainer.innerHTML = '<h1 class="content-title text-red-500">Eroare: Articol negăsit</h1><p>ID-ul articolului lipsește din URL.</p>';
+                commentsSection.style.display = 'none';
+                return;
+            }
+            try {
+                const [articleRes, commentsRes] = await Promise.all([
+                    fetch(`/api/articles/${articleId}`),
+                    fetch(`/api/comments/${articleId}`)
+                ]);
+                if (!articleRes.ok) throw new Error('Articolul nu a putut fi încărcat.');
+                const article = await articleRes.json();
+                
+                document.title = `${article.title} - FAR`;
+                articleContainer.innerHTML = `
+                    <h1 class="content-title">${article.title}</h1>
+                    <div class="text-sm text-gray-500 mb-4">De <strong>${article.author}</strong> | Publicat la <strong>${article.date}</strong></div>
+                    <img src="${article.imageUrl}" alt="Imagine pentru ${article.title}" class="rounded-lg w-full mb-6">
+                    <div class="prose max-w-none text-lg text-gray-800" style="white-space: pre-wrap;">${article.content}</div>
+                `;
+                const comments = await commentsRes.json();
+                renderCommentsSection(comments);
+            } catch (error) {
+                articleContainer.innerHTML = `<h1 class="content-title text-red-500">Eroare</h1><p>${error.message}</p>`;
+            }
+        }
+        
+        // --- PUNCTUL DE INTRARE ---
+        document.addEventListener('DOMContentLoaded', () => {
+            updateHeader();
+            loadPageData();
+        });
+
+    </script>
+</body>
+</html>
