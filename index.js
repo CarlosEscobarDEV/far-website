@@ -34,67 +34,66 @@ const client = new Client({
 });
 client.once('ready', () => { console.log(`[BOT] Bot-ul este online! Conectat ca ${client.user.tag}`); });
 
-// --- GESTIONAREA MESAJELOR: AI & MODERARE (LOGICA REPARATA V3) ---
+// --- GESTIONAREA MESAJELOR: AI & MODERARE (LOGICA REPARATA V4) ---
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
     const content = message.content.toLowerCase();
     const authorMember = message.member;
     const hasPermission = authorMember.roles.cache.some(role => ALLOWED_ROLES.includes(role.id));
-    const targetMember = message.mentions.members.first();
+    
+    // Gasim prima mentiune care NU este bot-ul insusi.
+    const targetMember = message.mentions.members.find(m => m.id !== client.user.id);
 
-    // --- LOGICA DE MODERARE ---
-    // Verificam daca un moderator a scris, a mentionat pe cineva (si nu pe el insusi) si a folosit un cuvant cheie
-    if (hasPermission && targetMember && targetMember.id !== authorMember.id && (content.includes('kick') || content.includes('ban') || content.includes('nickname'))) {
+    // --- LOGICA DE MODERARE (ARE PRIORITATE) ---
+    if (hasPermission && targetMember) {
+        let command = null;
+        if (content.includes('kick') || content.includes('da-i kick')) command = 'kick';
+        else if (content.includes('ban') || content.includes('da-i ban')) command = 'ban';
+        else if (content.includes('schimbă nickname-ul') || content.includes('schimba nickname-ul')) command = 'nickname';
         
-        // Verificare cruciala: Botul nu poate actiona asupra proprietarului serverului
-        if (targetMember.id === message.guild.ownerId) {
-            return message.reply("❌ Nu pot executa acțiuni de moderare asupra proprietarului serverului. Aceasta este o regulă Discord.");
-        }
-
-        // --- Verificam comenzile specifice ---
-        try {
-            if (content.includes('kick') || content.includes('da-i kick')) {
-                // Folosim proprietatea .kickable oferita de discord.js, care verifica ierarhia rolurilor
-                if (!targetMember.kickable) {
-                    return message.reply(`❌ Nu îl pot da afară pe ${targetMember.user.tag}. Asigură-te că rolul meu ("FARAI") este mai sus în lista de roluri decât rolul său cel mai înalt.`);
-                }
-                await targetMember.kick("Acțiune de moderare din chat.");
-                return message.reply(`✅ Gata! L-am dat afară pe ${targetMember.user.tag}.`);
-            } 
-            
-            if (content.includes('ban') || content.includes('da-i ban')) {
-                if (!targetMember.bannable) {
-                    return message.reply(`❌ Nu îi pot da ban lui ${targetMember.user.tag}. Asigură-te că rolul meu este mai sus decât rolul său.`);
-                }
-                await targetMember.ban({ reason: "Acțiune de moderare din chat." });
-                return message.reply(`✅ Gata! I-am dat ban lui ${targetMember.user.tag}.`);
-            } 
-            
-            if (content.includes('schimbă nickname-ul') || content.includes('schimba nickname-ul')) {
-                if (!targetMember.manageable) {
-                     return message.reply(`❌ Nu îi pot schimba nickname-ul lui ${targetMember.user.tag}. Asigură-te că rolul meu este mai sus decât rolul său.`);
-                }
-                const match = message.content.match(/(?:în|in)\s+"([^"]+)"/i);
-                if (match && match[1]) {
-                    const newNickname = match[1];
-                    await targetMember.setNickname(newNickname);
-                    return message.reply(`✅ Gata! Am schimbat nickname-ul lui ${targetMember.user.tag} în "${newNickname}".`);
-                } else {
-                    return message.reply('Format incorect. Folosește: `schimbă nickname-ul lui @user în "Noul Nickname"`');
-                }
+        // Daca a fost gasita o comanda de moderare, o executam si oprim.
+        if (command) {
+            // Verificare proprietar
+            if (targetMember.id === message.guild.ownerId) {
+                return message.reply("❌ Nu pot executa acțiuni de moderare asupra proprietarului serverului.");
             }
-        } catch (error) {
-            console.error('[MODERATION] Eroare la executarea comenzii:', error);
-            return message.reply(`❌ A apărut o eroare tehnică la executarea comenzii.`);
+
+            try {
+                switch (command) {
+                    case 'kick':
+                        if (!targetMember.kickable) return message.reply(`❌ Nu îl pot da afară pe ${targetMember.user.tag}. Asigură-te că rolul meu este mai sus decât rolul său.`);
+                        await targetMember.kick("Acțiune de moderare din chat.");
+                        return message.reply(`✅ Gata! L-am dat afară pe ${targetMember.user.tag}.`);
+
+                    case 'ban':
+                        if (!targetMember.bannable) return message.reply(`❌ Nu îi pot da ban lui ${targetMember.user.tag}. Asigură-te că rolul meu este mai sus decât rolul său.`);
+                        await targetMember.ban({ reason: "Acțiune de moderare din chat." });
+                        return message.reply(`✅ Gata! I-am dat ban lui ${targetMember.user.tag}.`);
+
+                    case 'nickname':
+                        if (!targetMember.manageable) return message.reply(`❌ Nu îi pot schimba nickname-ul lui ${targetMember.user.tag}. Asigură-te că rolul meu este mai sus decât rolul său.`);
+                        const match = message.content.match(/(?:în|in)\s+"([^"]+)"/i);
+                        if (match && match[1]) {
+                            const newNickname = match[1];
+                            await targetMember.setNickname(newNickname);
+                            return message.reply(`✅ Gata! Am schimbat nickname-ul lui ${targetMember.user.tag} în "${newNickname}".`);
+                        } else {
+                            return message.reply('Format incorect. Folosește: `schimbă nickname-ul lui @user în "Noul Nickname"`');
+                        }
+                }
+            } catch (error) {
+                console.error('[MODERATION] Eroare la executarea comenzii:', error);
+                return message.reply(`❌ A apărut o eroare tehnică la executarea comenzii.`);
+            }
         }
     }
     
     // --- LOGICA PENTRU AI ---
-    // Se activeaza doar daca botul este mentionat, si nu a fost o comanda de moderare
+    // Se activeaza DOAR daca bot-ul a fost mentionat si nu a fost o comanda de moderare
     if (message.mentions.has(client.user.id)) {
         if (!aiModel) return message.reply("Modulul AI nu este configurat corect.");
-
+        
         await message.channel.sendTyping();
         const prompt = message.content.replace(/<@!?\d+>/g, '').trim();
         const history = conversationHistory.get(message.channel.id) || [];
@@ -107,11 +106,8 @@ client.on('messageCreate', async message => {
             history.push({ role: "user", parts: [{ text: prompt }] });
             history.push({ role: "model", parts: [{ text: text }] });
 
-            if(history.length > 10) {
-                conversationHistory.set(message.channel.id, history.slice(-10));
-            } else {
-                 conversationHistory.set(message.channel.id, history);
-            }
+            if(history.length > 10) { conversationHistory.set(message.channel.id, history.slice(-10)); }
+            else { conversationHistory.set(message.channel.id, history); }
 
             await message.reply(text.substring(0, 2000));
         } catch (error) {
@@ -124,8 +120,6 @@ client.on('messageCreate', async message => {
 
 // --- INITIALIZARE SERVER WEB SI RESTUL API-URILOR ---
 const app = express();
-// ... (restul codului ramane neschimbat)
-// ...
 app.use(express.static('public'));
 app.use(express.json());
 const port = process.env.PORT || 3000;
