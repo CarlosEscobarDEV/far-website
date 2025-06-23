@@ -102,53 +102,44 @@ console.log('[SERVER] Se configurează rutele API...');
 
 // === RUTE PENTRU ADMIN MANAGEMENT (REPARATE SI COMPLETE) ===
 app.get('/members/:guildId', async (req, res) => {
-    console.log(`[API HIT] GET /members/${req.params.guildId}`);
     try {
         const guild = await client.guilds.fetch(req.params.guildId);
         await guild.members.fetch();
         const membersList = guild.members.cache.filter(m => !m.user.bot).map(m => ({ id: m.id, name: m.user.tag, displayName: m.displayName }));
         res.status(200).send(membersList);
-    } catch (e) { 
-        console.error('[API ERROR] /members:', e);
-        res.status(500).send({ message: 'Eroare la preluarea membrilor.' }); 
-    }
+    } catch (e) { res.status(500).send({ message: 'Eroare la preluarea membrilor.' }); }
 });
 
 app.post('/kick', async (req, res) => {
-    console.log(`[API HIT] POST /kick`);
     try {
         const { guildId, userId, reason } = req.body;
         const guild = await client.guilds.fetch(guildId);
         const member = await guild.members.fetch(userId);
         await member.kick(reason || 'Acțiune de la un administrator.');
         res.status(200).send({ message: `Membrul ${member.user.tag} a fost dat afară!` });
-    } catch (e) { 
-        console.error('[API ERROR] /kick:', e);
-        res.status(500).send({ message: 'Nu s-a putut da kick membrului.' }); 
-    }
+    } catch (e) { res.status(500).send({ message: 'Nu s-a putut da kick membrului.' }); }
 });
 
 app.post('/ban', async (req, res) => {
-    console.log(`[API HIT] POST /ban`);
     try {
         const { guildId, userId, reason } = req.body;
         const guild = await client.guilds.fetch(guildId);
         await guild.members.ban(userId, { reason: reason || 'Acțiune de la un administrator.' });
         res.status(200).send({ message: `Utilizatorul cu ID ${userId} a primit BAN!` });
-    } catch (e) { 
-        console.error('[API ERROR] /ban:', e);
-        res.status(500).send({ message: 'Nu s-a putut da ban membrului.' }); 
-    }
+    } catch (e) { res.status(500).send({ message: 'Nu s-a putut da ban membrului.' }); }
 });
 
 app.post('/announcement', async (req, res) => {
-    console.log(`[API HIT] POST /announcement`);
     try {
-        const { title, message, author } = req.body;
+        const { title, message, author } = req.body; // Primim si autorul
         if (!title || !message) return res.status(400).send({ message: 'Lipsesc titlul sau mesajul.' });
+        
         const channel = await client.channels.fetch(ANNOUNCEMENT_CHANNEL_ID);
+        if (!channel) return res.status(404).send({ message: 'Canalul de anunturi nu a fost găsit.' });
+
         const footerText = `Mesaj trimis de: Consilier de Securitate ${author || 'Necunoscut'}`;
         const embed = new EmbedBuilder().setColor('#0099ff').setTitle(`📢 ${title}`).setDescription(message).setTimestamp().setFooter({ text: footerText });
+        
         await channel.send({ embeds: [embed] });
         res.status(200).send({ message: 'Anunțul a fost publicat!' });
     } catch (e) {
@@ -158,13 +149,77 @@ app.post('/announcement', async (req, res) => {
 });
 
 // === RESTUL API-URILOR (USERS, ARTICLES, ETC) ===
-app.post('/api/register', async (req, res) => { /* ... cod existent ... */ });
-app.post('/api/login', async (req, res) => { /* ... cod existent ... */ });
-app.get('/api/articles', async (req, res) => { /* ... cod existent ... */ });
-app.get('/api/articles/:id', async (req, res) => { /* ... cod existent ... */ });
-app.post('/api/articles', async (req, res) => { /* ... cod existent ... */ });
-app.get('/api/comments/:articleId', async (req, res) => { /* ... cod existent ... */ });
-app.post('/api/comments/:articleId', async (req, res) => { /* ... cod existent ... */ });
+app.post('/api/register', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        if (!username || !password) return res.status(400).send({ message: 'Numele și parola sunt obligatorii.' });
+        const users = await readJSONFile(USERS_FILE);
+        if (users.find(u => u.username.toLowerCase() === username.toLowerCase())) return res.status(409).send({ message: 'Nume de utilizator deja folosit.' });
+        users.push({ id: Date.now(), username, password });
+        await writeJSONFile(USERS_FILE, users);
+        res.status(201).send({ message: 'Cont creat cu succes!' });
+    } catch (e) { res.status(500).send({ message: 'Eroare la înregistrare.' }); }
+});
+
+app.post('/api/login', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        if (!username || !password) return res.status(400).send({ message: 'Numele și parola sunt obligatorii.' });
+        const users = await readJSONFile(USERS_FILE);
+        const user = users.find(u => u.username.toLowerCase() === username.toLowerCase());
+        if (!user || user.password !== password) return res.status(401).send({ message: 'Nume sau parolă incorectă.' });
+        res.status(200).send({ id: user.id, username: user.username });
+    } catch (e) { res.status(500).send({ message: 'Eroare la autentificare.' }); }
+});
+
+app.get('/api/articles', async (req, res) => {
+    try {
+        let articles = await readJSONFile(ARTICLES_FILE);
+        if (req.query.category) { articles = articles.filter(article => article.category === req.query.category); }
+        res.status(200).send(articles);
+    } catch { res.status(500).send({ message: 'Eroare la preluarea articolelor.' }); }
+});
+
+app.get('/api/articles/:id', async (req, res) => {
+    try {
+        const articles = await readJSONFile(ARTICLES_FILE);
+        const article = articles.find(a => a.id == req.params.id);
+        if (article) res.status(200).send(article);
+        else res.status(404).send({ message: 'Articolul nu a fost găsit.' });
+    } catch { res.status(500).send({ message: 'Eroare la preluarea articolului.' }); }
+});
+
+app.post('/api/articles', async (req, res) => {
+    try {
+        const articles = await readJSONFile(ARTICLES_FILE);
+        const newArticle = { id: Date.now(), ...req.body, date: new Date().toLocaleDateString('ro-RO') };
+        articles.unshift(newArticle);
+        await writeJSONFile(ARTICLES_FILE, articles);
+        res.status(201).send({ message: 'Articolul a fost publicat!' });
+    } catch { res.status(500).send({ message: 'Eroare la salvarea articolului.' }); }
+});
+
+app.get('/api/comments/:articleId', async (req, res) => {
+    try {
+        const allComments = await readJSONFile(COMMENTS_FILE);
+        const articleComments = allComments[req.params.articleId] || [];
+        res.status(200).send(articleComments);
+    } catch { res.status(500).send({ message: 'Eroare la preluarea comentariilor.' }); }
+});
+
+app.post('/api/comments/:articleId', async (req, res) => {
+    try {
+        const allComments = await readJSONFile(COMMENTS_FILE);
+        const { author, content } = req.body;
+        if (!author || !content) return res.status(400).send({ message: 'Autorul și conținutul sunt obligatorii.' });
+        const newComment = { id: Date.now(), author, content, date: new Date().toLocaleString('ro-RO') };
+        const articleId = req.params.articleId;
+        if (!allComments[articleId]) allComments[articleId] = [];
+        allComments[articleId].unshift(newComment);
+        await writeJSONFile(COMMENTS_FILE, allComments);
+        res.status(201).send(newComment);
+    } catch (e) { res.status(500).send({ message: 'Eroare la salvarea comentariului.' }); }
+});
 
 // --- PORNIREA APLICATIEI ---
 const start = async () => {
