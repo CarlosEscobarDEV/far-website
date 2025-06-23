@@ -3,7 +3,7 @@ const { Client, GatewayIntentBits, EmbedBuilder, Partials } = require('discord.j
 const express = require('express');
 const fs = require('fs');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const axios = require('axios'); // Am adaugat axios pentru a descarca imagini
+const axios = require('axios');
 
 // --- CONFIGURARE GENERALA ---
 const ARTICLES_FILE = './articles.json';
@@ -55,7 +55,7 @@ const client = new Client({
 });
 client.once('ready', () => { console.log(`[BOT] Bot-ul este online! Conectat ca ${client.user.tag}`); });
 
-// --- GESTIONAREA MESAJELOR PENTRU AI (CU VIZIUNE) ---
+// --- GESTIONAREA MESAJELOR PENTRU AI (CU VIZIUNE - LOGICA REPARATA) ---
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
@@ -82,57 +82,63 @@ client.on('messageCreate', async message => {
     
     try {
         const imageParts = [];
-        // Verificam daca exista atasamente (imagini)
         if (message.attachments.size > 0) {
-            const attachment = message.attachments.first();
-            // Verificam daca atasamentul este o imagine
-            if (attachment.contentType && attachment.contentType.startsWith('image/')) {
-                console.log(`[AI] Procesez imaginea: ${attachment.url}`);
-                const response = await axios.get(attachment.url, { responseType: 'arraybuffer' });
-                const imageBuffer = Buffer.from(response.data, 'binary');
-                
-                imageParts.push({
-                    inlineData: {
-                        mimeType: attachment.contentType,
-                        data: imageBuffer.toString('base64'),
-                    },
-                });
+            for (const attachment of message.attachments.values()) {
+                if (attachment.contentType && attachment.contentType.startsWith('image/')) {
+                    console.log(`[AI] Procesez imaginea: ${attachment.url}`);
+                    const response = await axios.get(attachment.url, { responseType: 'arraybuffer' });
+                    imageParts.push({
+                        inlineData: {
+                            mimeType: attachment.contentType,
+                            data: Buffer.from(response.data).toString('base64'),
+                        },
+                    });
+                    break; // Procesam doar prima imagine pentru a fi eficienti
+                }
             }
         }
         
-        // Construim promptul final, care poate include text si/sau imagini
-        const finalPrompt = [
-            { text: promptText },
-            ...imageParts
+        // Construim "partile" mesajului curent
+        const currentUserMessageParts = [];
+        if (promptText) {
+            currentUserMessageParts.push({ text: promptText });
+        }
+        currentUserMessageParts.push(...imageParts);
+
+        // Construim intregul istoric pentru request
+        const contents = [
+            ...history,
+            { role: "user", parts: currentUserMessageParts }
         ];
 
-        const chat = aiModel.startChat({ history });
-        const result = await chat.generateContent({ contents: [{ role: "user", parts: finalPrompt }] });
-        const text = result.response.text();
+        // Apelam AI-ul cu istoricul complet
+        const result = await aiModel.generateContent({ contents });
+        const response = await result.response;
+        const text = response.text();
         
         // Actualizam istoricul conversatiei
-        history.push({ role: "user", parts: [{ text: promptText }] }); // Salvam doar textul in istoric pentru simplitate
-        history.push({ role: "model", parts: [{ text: text }] });
+        history.push({ role: "user", parts: currentUserMessageParts }); 
+        history.push({ role: "model", parts: [{ text }] });
         conversationHistory.set(message.channel.id, history.length > 10 ? history.slice(-10) : history);
 
         await message.reply(text.substring(0, 2000));
 
     } catch (error) {
         console.error('[AI] Eroare la generarea raspunsului:', error);
-        await message.reply("Oops! Am o mică eroare de sistem și nu pot procesa acum. Poate imaginea este prea complexă?");
+        await message.reply("Oops! Am o mică eroare de sistem și nu pot procesa acum. Poate imaginea este prea complexă sau formatul nu este suportat?");
     }
 });
 
 
 // --- INITIALIZARE SERVER WEB SI RESTUL API-URILOR ---
 const app = express();
-// ... (restul codului, care nu se schimba, ramane mai jos)
-// ...
 app.use(express.static('public'));
 app.use(express.json());
 const port = process.env.PORT || 3000;
+
 function readJSONFile(filePath) { return new Promise((resolve, reject) => { fs.readFile(filePath, 'utf8', (err, data) => { if (err) return reject(err); try { resolve(JSON.parse(data)); } catch (e) { reject(e); } }); }); }
 function writeJSONFile(filePath, data) { return new Promise((resolve, reject) => { fs.writeFile(filePath, JSON.stringify(data, null, 2), err => { if (err) return reject(err); resolve(); }); }); }
+
 app.get('/members/:guildId', async (req, res) => {
     try {
         const guild = await client.guilds.fetch(req.params.guildId);
@@ -141,6 +147,7 @@ app.get('/members/:guildId', async (req, res) => {
         res.status(200).send(membersList);
     } catch (e) { res.status(500).send({ message: 'Eroare la preluarea membrilor.' }); }
 });
+
 app.post('/announcement', async (req, res) => {
     try {
         const { title, message, author } = req.body;
@@ -156,7 +163,7 @@ app.post('/announcement', async (req, res) => {
         res.status(500).send({ message: 'Nu s-a putut trimite anunțul.' });
     }
 });
-// (Restul API-urilor raman la fel)
+// (Restul API-urilor raman neschimbate)
 const start = async () => {
     try {
         await client.login(process.env.DISCORD_TOKEN);
