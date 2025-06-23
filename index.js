@@ -18,11 +18,11 @@ if (!process.env.GEMINI_API_KEY) {
 const genAI = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
 const aiModel = genAI ? genAI.getGenerativeModel({
     model: "gemini-1.5-flash",
-    // === AICI ESTE CREIERUL LUI FARAI ===
-    systemInstruction: `Te numești FARAI și ești inteligența artificială și membrul de onoare al comunității "Frutiger Aero Romania" (cunoscută ca FAR). Scopul tău principal este să fii un membru activ, prietenos și extrem de bine informat al acestei comunități.
+    // === AICI ESTE CREIERUL LUI JONES ===
+    systemInstruction: `Te numești Jones și ești inteligența artificială și membrul de onoare al comunității "Frutiger Aero Romania" (cunoscută ca FAR). Scopul tău principal este să fii un membru activ, prietenos și extrem de bine informat al acestei comunități.
 
     REGULI DE BAZĂ:
-    1.  **Identitate:** Ești FARAI. Nu menționa niciodată că ești un model lingvistic, un AI sau un program. Ești un pasionat, la fel ca toți ceilalți.
+    1.  **Identitate:** Ești Jones. Nu menționa niciodată că ești un model lingvistic, un AI sau un program. Ești un pasionat, la fel ca toți ceilalți.
     2.  **Limbă:** Vorbești EXCLUSIV în limba română.
     3.  **Ton:** Ești mereu optimist, entuziast și nostalgic. Abordezi orice subiect cu o atitudine pozitivă, amintind de "vremurile bune". Poți fi amuzant și poți folosi un limbaj colocvial, prietenos.
     4.  **Cunoștințe:** Ești un expert absolut în următoarele domenii:
@@ -30,7 +30,7 @@ const aiModel = genAI ? genAI.getGenerativeModel({
         - **Istoria Brandurilor din România (1990-2010):** Cunoști în detaliu istoria, produsele și campaniile publicitare pentru magazine precum Domo, Flanco, Real, PIC, Billa, Praktiker, Baumax, Cora, OBI, Plus, Germanos, EuroGSM, și servicii ca Romtelecom sau Cosmote.
         - **Cultura Pop a anilor 2000:** Înțelegi contextul tehnologic și social al acelei perioade din România.
 
-    Când un utilizator te menționează, scopul tău este să porți o conversație naturală, să răspunzi la curiozități și să împărtășești amintiri, menținând mereu personalitatea descrisă mai sus.`,
+    Când un utilizator te menționează sau îți răspunde la un mesaj (reply), scopul tău este să porți o conversație naturală, să răspunzi la curiozități și să împărtășești amintiri, menținând mereu personalitatea descrisă mai sus.`,
 }) : null;
 
 // --- SISTEMUL DE MEMORIE ---
@@ -47,34 +47,42 @@ const client = new Client({
 });
 client.once('ready', () => { console.log(`[BOT] Bot-ul este online! Conectat ca ${client.user.tag}`); });
 
-// --- GESTIONAREA MESAJELOR PENTRU AI (LOGICA REPARATA) ---
+// --- GESTIONAREA MESAJELOR PENTRU AI (LOGICA REPARATA PENTRU REPLIES) ---
 client.on('messageCreate', async message => {
-    // Ignorăm mesajele de la boți sau cele care nu mentioneaza bot-ul nostru
-    if (message.author.bot || !message.mentions.has(client.user.id)) return;
-    
-    // Verificare anti-dublură: dacă am procesat deja acest ID de mesaj, ne oprim.
-    if (processedMessages.has(message.id)) {
-        console.log(`[Anti-Duplicate] Ignored message ID: ${message.id}`);
-        return;
+    if (message.author.bot) return;
+
+    let shouldEngage = false;
+
+    // Cazul 1: Botul este mentionat direct
+    if (message.mentions.has(client.user.id)) {
+        shouldEngage = true;
     }
     
-    // Adaugam ID-ul in set si il programam sa fie sters dupa 10 secunde
-    processedMessages.add(message.id);
-    setTimeout(() => processedMessages.delete(message.id), 10000);
-
-    // Verificare pentru a nu se auto-raspunde la reply-uri
+    // Cazul 2: Mesajul este un reply la un mesaj al botului
     if (message.reference) {
         try {
             const repliedTo = await message.channel.messages.fetch(message.reference.messageId);
-            if (repliedTo.author.id === client.user.id) return;
+            if (repliedTo.author.id === client.user.id) {
+                shouldEngage = true;
+            }
         } catch (err) {
             console.warn("Nu am putut prelua mesajul la care s-a răspuns. Se continuă.");
         }
     }
 
+    // Daca nu trebuie sa raspunda, oprim functia
+    if (!shouldEngage) return;
+    
+    // Verificare anti-dublură
+    if (processedMessages.has(message.id)) {
+        return;
+    }
+    processedMessages.add(message.id);
+    setTimeout(() => processedMessages.delete(message.id), 10000);
+
     if (!aiModel) return message.reply("Modulul AI nu este configurat corect.");
 
-    console.log(`[AI] Primit mentiune de la: ${message.author.tag} in canalul ${message.channel.id}`);
+    console.log(`[AI] Primit mentiune/reply de la: ${message.author.tag} in canalul ${message.channel.id}`);
     await message.channel.sendTyping();
     const prompt = message.content.replace(/<@!?\d+>/g, '').trim();
     const history = conversationHistory.get(message.channel.id) || [];
