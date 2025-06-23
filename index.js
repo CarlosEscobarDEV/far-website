@@ -33,8 +33,9 @@ const aiModel = genAI ? genAI.getGenerativeModel({
     Când un utilizator te menționează, scopul tău este să porți o conversație naturală, să răspunzi la curiozități și să împărtășești amintiri, menținând mereu personalitatea descrisă mai sus.`,
 }) : null;
 
-// --- SISTEMUL DE MEMORIE PENTRU CONVERSATII ---
+// --- SISTEMUL DE MEMORIE ---
 const conversationHistory = new Map();
+const processedMessages = new Set(); // Set pentru a preveni procesarea dublă a mesajelor
 
 // --- INITIALIZARE CLIENT DISCORD (BOT) ---
 const client = new Client({
@@ -46,14 +47,29 @@ const client = new Client({
 });
 client.once('ready', () => { console.log(`[BOT] Bot-ul este online! Conectat ca ${client.user.tag}`); });
 
-// --- GESTIONAREA MESAJELOR PENTRU AI ---
+// --- GESTIONAREA MESAJELOR PENTRU AI (LOGICA REPARATA) ---
 client.on('messageCreate', async message => {
-    // Se activeaza DOAR daca bot-ul este mentionat. Ignora orice altceva.
+    // Ignorăm mesajele de la boți sau cele care nu mentioneaza bot-ul nostru
     if (message.author.bot || !message.mentions.has(client.user.id)) return;
     
-    // Verificare sa nu se auto-raspunda daca e mentionat intr-un reply
-    if (message.reference && (await message.channel.messages.fetch(message.reference.messageId)).author.id === client.user.id) {
+    // Verificare anti-dublură: dacă am procesat deja acest ID de mesaj, ne oprim.
+    if (processedMessages.has(message.id)) {
+        console.log(`[Anti-Duplicate] Ignored message ID: ${message.id}`);
         return;
+    }
+    
+    // Adaugam ID-ul in set si il programam sa fie sters dupa 10 secunde
+    processedMessages.add(message.id);
+    setTimeout(() => processedMessages.delete(message.id), 10000);
+
+    // Verificare pentru a nu se auto-raspunde la reply-uri
+    if (message.reference) {
+        try {
+            const repliedTo = await message.channel.messages.fetch(message.reference.messageId);
+            if (repliedTo.author.id === client.user.id) return;
+        } catch (err) {
+            console.warn("Nu am putut prelua mesajul la care s-a răspuns. Se continuă.");
+        }
     }
 
     if (!aiModel) return message.reply("Modulul AI nu este configurat corect.");
