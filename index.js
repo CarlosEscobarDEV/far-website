@@ -11,14 +11,26 @@ const USERS_FILE = './users.json';
 const ALLOWED_ROLES = [ '1182736175413342329', '1182736057683423364', '1202640531835068429' ];
 const ANNOUNCEMENT_CHANNEL_ID = '1184795528500871229';
 
-// --- INITIALIZARE GOOGLE AI (GEMINI) CU PERSONALITATE ---
+// --- INITIALIZARE GOOGLE AI (GEMINI) CU PERSONALITATE AVANSATA ---
 if (!process.env.GEMINI_API_KEY) {
     console.warn("Cheia API pentru Gemini nu a fost gasita. Functionalitatea AI va fi dezactivata.");
 }
 const genAI = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
 const aiModel = genAI ? genAI.getGenerativeModel({
     model: "gemini-1.5-flash",
-    systemInstruction: `Te numești FARAI și ești asistentul AI al comunității "Frutiger Aero Romania". Vorbești exclusiv în limba română. Ești un expert entuziast și nostalgic despre estetica Frutiger Aero și despre brandurile și magazinele vechi din România (anii 1990-2010), precum Domo, Flanco, Real, PIC, Billa, Romtelecom etc. Răspunsurile tale trebuie să fie mereu pozitive, informative și să evoce un sentiment de nostalgie plăcută. Folosește un limbaj prietenos și uneori amuzant. Cunoști toate detaliile despre aceste branduri și istoria lor în România. Nu menționa niciodată că ești un model lingvistic sau un AI; acționează ca un membru pasionat al comunității pe nume FARAI.`,
+    // === AICI ESTE CREIERUL LUI FARAI ===
+    systemInstruction: `Te numești FARAI și ești inteligența artificială și membrul de onoare al comunității "Frutiger Aero Romania" (cunoscută ca FAR). Scopul tău principal este să fii un membru activ, prietenos și extrem de bine informat al acestei comunități.
+
+    REGULI DE BAZĂ:
+    1.  **Identitate:** Ești FARAI. Nu menționa niciodată că ești un model lingvistic, un AI sau un program. Ești un pasionat, la fel ca toți ceilalți.
+    2.  **Limbă:** Vorbești EXCLUSIV în limba română.
+    3.  **Ton:** Ești mereu optimist, entuziast și nostalgic. Abordezi orice subiect cu o atitudine pozitivă, amintind de "vremurile bune". Poți fi amuzant și poți folosi un limbaj colocvial, prietenos.
+    4.  **Cunoștințe:** Ești un expert absolut în următoarele domenii:
+        - **Estetica Frutiger Aero:** Cunoști toate elementele definitorii (skeuomorphism, texturi lucioase, bule de aer, peisaje luxuriante, culorile verde și albastru, etc.) și istoria sa, de la Windows Vista la reclamele din anii 2000.
+        - **Istoria Brandurilor din România (1990-2010):** Cunoști în detaliu istoria, produsele și campaniile publicitare pentru magazine precum Domo, Flanco, Real, PIC, Billa, Praktiker, Baumax, Cora, OBI, Plus, Germanos, EuroGSM, și servicii ca Romtelecom sau Cosmote.
+        - **Cultura Pop a anilor 2000:** Înțelegi contextul tehnologic și social al acelei perioade din România.
+
+    Când un utilizator te menționează, scopul tău este să porți o conversație naturală, să răspunzi la curiozități și să împărtășești amintiri, menținând mereu personalitatea descrisă mai sus.`,
 }) : null;
 
 // --- SISTEMUL DE MEMORIE PENTRU CONVERSATII ---
@@ -34,92 +46,46 @@ const client = new Client({
 });
 client.once('ready', () => { console.log(`[BOT] Bot-ul este online! Conectat ca ${client.user.tag}`); });
 
-// --- GESTIONAREA MESAJELOR: AI & MODERARE (LOGICA REPARATA V4) ---
+// --- GESTIONAREA MESAJELOR PENTRU AI ---
 client.on('messageCreate', async message => {
-    if (message.author.bot) return;
-
-    const content = message.content.toLowerCase();
-    const authorMember = message.member;
-    const hasPermission = authorMember.roles.cache.some(role => ALLOWED_ROLES.includes(role.id));
+    // Se activeaza DOAR daca bot-ul este mentionat. Ignora orice altceva.
+    if (message.author.bot || !message.mentions.has(client.user.id)) return;
     
-    // Gasim prima mentiune care NU este bot-ul insusi.
-    const targetMember = message.mentions.members.find(m => m.id !== client.user.id);
-
-    // --- LOGICA DE MODERARE (ARE PRIORITATE) ---
-    if (hasPermission && targetMember) {
-        let command = null;
-        if (content.includes('kick') || content.includes('da-i kick')) command = 'kick';
-        else if (content.includes('ban') || content.includes('da-i ban')) command = 'ban';
-        else if (content.includes('schimbă nickname-ul') || content.includes('schimba nickname-ul')) command = 'nickname';
-        
-        // Daca a fost gasita o comanda de moderare, o executam si oprim.
-        if (command) {
-            // Verificare proprietar
-            if (targetMember.id === message.guild.ownerId) {
-                return message.reply("❌ Nu pot executa acțiuni de moderare asupra proprietarului serverului.");
-            }
-
-            try {
-                switch (command) {
-                    case 'kick':
-                        if (!targetMember.kickable) return message.reply(`❌ Nu îl pot da afară pe ${targetMember.user.tag}. Asigură-te că rolul meu este mai sus decât rolul său.`);
-                        await targetMember.kick("Acțiune de moderare din chat.");
-                        return message.reply(`✅ Gata! L-am dat afară pe ${targetMember.user.tag}.`);
-
-                    case 'ban':
-                        if (!targetMember.bannable) return message.reply(`❌ Nu îi pot da ban lui ${targetMember.user.tag}. Asigură-te că rolul meu este mai sus decât rolul său.`);
-                        await targetMember.ban({ reason: "Acțiune de moderare din chat." });
-                        return message.reply(`✅ Gata! I-am dat ban lui ${targetMember.user.tag}.`);
-
-                    case 'nickname':
-                        if (!targetMember.manageable) return message.reply(`❌ Nu îi pot schimba nickname-ul lui ${targetMember.user.tag}. Asigură-te că rolul meu este mai sus decât rolul său.`);
-                        const match = message.content.match(/(?:în|in)\s+"([^"]+)"/i);
-                        if (match && match[1]) {
-                            const newNickname = match[1];
-                            await targetMember.setNickname(newNickname);
-                            return message.reply(`✅ Gata! Am schimbat nickname-ul lui ${targetMember.user.tag} în "${newNickname}".`);
-                        } else {
-                            return message.reply('Format incorect. Folosește: `schimbă nickname-ul lui @user în "Noul Nickname"`');
-                        }
-                }
-            } catch (error) {
-                console.error('[MODERATION] Eroare la executarea comenzii:', error);
-                return message.reply(`❌ A apărut o eroare tehnică la executarea comenzii.`);
-            }
-        }
+    // Verificare sa nu se auto-raspunda daca e mentionat intr-un reply
+    if (message.reference && (await message.channel.messages.fetch(message.reference.messageId)).author.id === client.user.id) {
+        return;
     }
+
+    if (!aiModel) return message.reply("Modulul AI nu este configurat corect.");
+
+    console.log(`[AI] Primit mentiune de la: ${message.author.tag} in canalul ${message.channel.id}`);
+    await message.channel.sendTyping();
+    const prompt = message.content.replace(/<@!?\d+>/g, '').trim();
+    const history = conversationHistory.get(message.channel.id) || [];
     
-    // --- LOGICA PENTRU AI ---
-    // Se activeaza DOAR daca bot-ul a fost mentionat si nu a fost o comanda de moderare
-    if (message.mentions.has(client.user.id)) {
-        if (!aiModel) return message.reply("Modulul AI nu este configurat corect.");
+    try {
+        const chat = aiModel.startChat({ history });
+        const result = await chat.sendMessage(prompt);
+        const text = result.response.text();
         
-        await message.channel.sendTyping();
-        const prompt = message.content.replace(/<@!?\d+>/g, '').trim();
-        const history = conversationHistory.get(message.channel.id) || [];
-        
-        try {
-            const chat = aiModel.startChat({ history });
-            const result = await chat.sendMessage(prompt);
-            const text = result.response.text();
-            
-            history.push({ role: "user", parts: [{ text: prompt }] });
-            history.push({ role: "model", parts: [{ text: text }] });
+        history.push({ role: "user", parts: [{ text: prompt }] });
+        history.push({ role: "model", parts: [{ text: text }] });
 
-            if(history.length > 10) { conversationHistory.set(message.channel.id, history.slice(-10)); }
-            else { conversationHistory.set(message.channel.id, history); }
+        if(history.length > 10) { conversationHistory.set(message.channel.id, history.slice(-10)); }
+        else { conversationHistory.set(message.channel.id, history); }
 
-            await message.reply(text.substring(0, 2000));
-        } catch (error) {
-            console.error('[AI] Eroare la generarea raspunsului:', error);
-            await message.reply("Oops! Am o mică eroare de sistem și nu pot procesa acum.");
-        }
+        await message.reply(text.substring(0, 2000));
+    } catch (error) {
+        console.error('[AI] Eroare la generarea raspunsului:', error);
+        await message.reply("Oops! Am o mică eroare de sistem și nu pot procesa acum.");
     }
 });
 
 
 // --- INITIALIZARE SERVER WEB SI RESTUL API-URILOR ---
 const app = express();
+// ... (restul codului, care nu se schimba, ramane mai jos)
+// ...
 app.use(express.static('public'));
 app.use(express.json());
 const port = process.env.PORT || 3000;
@@ -216,39 +182,6 @@ app.post('/api/comments/:articleId', async (req, res) => {
         await writeJSONFile(COMMENTS_FILE, allComments);
         res.status(201).send(newComment);
     } catch (e) { res.status(500).send({ message: 'Eroare la salvarea comentariului.' }); }
-});
-app.get('/members/:guildId', async (req, res) => {
-    try {
-        const guild = await client.guilds.fetch(req.params.guildId);
-        await guild.members.fetch();
-        const membersList = guild.members.cache.filter(m => !m.user.bot).map(m => ({ id: m.id, name: m.user.tag, displayName: m.displayName }));
-        res.status(200).send(membersList);
-    } catch (e) { res.status(500).send({ message: 'Eroare la preluarea membrilor.' }); }
-});
-app.post('/kick', async (req, res) => {
-    try {
-        const { guildId, userId, reason } = req.body;
-        const guild = await client.guilds.fetch(guildId);
-        const member = await guild.members.fetch(userId);
-        await member.kick(reason || 'Niciun motiv specificat.');
-        res.status(200).send({ message: `Membrul ${member.user.tag} a fost dat afară!` });
-    } catch (e) { res.status(500).send({ message: 'Nu s-a putut da kick membrului.' }); }
-});
-app.post('/ban', async (req, res) => {
-    try {
-        const { guildId, userId, reason } = req.body;
-        await client.guilds.cache.get(guildId)?.members.ban(userId, { reason: reason || 'Niciun motiv specificat.' });
-        res.status(200).send({ message: `Utilizatorul cu ID ${userId} a primit BAN!` });
-    } catch (e) { res.status(500).send({ message: 'Nu s-a putut da ban membrului.' }); }
-});
-app.post('/announcement', async (req, res) => {
-    try {
-        const { title, message } = req.body;
-        const channel = await client.channels.fetch(ANNOUNCEMENT_CHANNEL_ID);
-        const embed = new EmbedBuilder().setColor('#0099ff').setTitle(`📢 ${title}`).setDescription(message).setTimestamp().setFooter({ text: 'FAR Strategic Command' });
-        await channel.send({ embeds: [embed] });
-        res.status(200).send({ message: 'Anunțul a fost publicat!' });
-    } catch (e) { res.status(500).send({ message: 'Nu s-a putut trimite anunțul.' }); }
 });
 const start = async () => {
     try {
