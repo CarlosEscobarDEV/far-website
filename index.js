@@ -2,7 +2,6 @@ require('dotenv').config();
 const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const express = require('express');
 const fs = require('fs');
-// --- PACHET NOU PENTRU GOOGLE AI ---
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 // --- CONFIGURARE GENERALA ---
@@ -14,10 +13,10 @@ const ANNOUNCEMENT_CHANNEL_ID = '1184795528500871229';
 
 // --- INITIALIZARE GOOGLE AI (GEMINI) ---
 if (!process.env.GEMINI_API_KEY) {
-    throw new Error("Cheia API pentru Gemini nu a fost gasita in fisierul .env");
+    console.warn("Cheia API pentru Gemini nu a fost gasita. Functionalitatea AI va fi dezactivata.");
 }
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const aiModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash"});
+const genAI = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
+const aiModel = genAI ? genAI.getGenerativeModel({ model: "gemini-1.5-flash"}) : null;
 
 // --- INITIALIZARE CLIENT DISCORD (BOT) ---
 const client = new Client({
@@ -28,67 +27,51 @@ const client = new Client({
 });
 client.once('ready', () => { console.log(`[BOT] Bot-ul este online! Conectat ca ${client.user.tag}`); });
 
-// --- GESTIONAREA INTERACTIUNILOR (SLASH & AI) ---
+// --- GESTIONAREA MESAJELOR PENTRU AI ---
 client.on('messageCreate', async message => {
-    // Ignoram mesajele de la alti boti pentru a evita buclele infinite
-    if (message.author.bot) return;
+    if (message.author.bot || !message.mentions.has(client.user) || !aiModel) return;
 
-    // Verificam daca bot-ul a fost mentionat in mesaj
-    if (message.mentions.has(client.user)) {
-        console.log(`[AI] Primit mentiune de la: ${message.author.tag}`);
-        
-        // Trimitem un indicator "typing..." pentru a arata ca bot-ul "gandeste"
-        await message.channel.sendTyping();
+    console.log(`[AI] Primit mentiune de la: ${message.author.tag}`);
+    await message.channel.sendTyping();
+    const prompt = message.content.replace(/<@!?\d+>/g, '').trim();
 
-        // Extragem textul intrebarii, eliminand mentiunea bot-ului
-        const prompt = message.content.replace(/<@!?\d+>/g, '').trim();
-
-        try {
-            // Trimitem intrebarea la Gemini
-            const result = await aiModel.generateContent(prompt);
-            const response = await result.response;
-            const text = response.text();
-
-            // Raspundem la mesajul original cu textul generat de AI
-            // Daca textul e prea lung, il trimitem pe bucati
-            if (text.length > 2000) {
-                const chunks = text.match(/[\s\S]{1,2000}/g) || [];
-                for (const chunk of chunks) {
-                    await message.reply(chunk);
-                }
-            } else {
-                await message.reply(text);
-            }
-
-        } catch (error) {
-            console.error('[AI] Eroare la generarea raspunsului:', error);
-            await message.reply("Oops! A apărut o eroare și nu am putut genera un răspuns. Te rog încearcă mai târziu.");
-        }
+    try {
+        const result = await aiModel.generateContent(prompt);
+        const response = await result.response;
+        const text = response.text();
+        await message.reply(text.substring(0, 2000));
+    } catch (error) {
+        console.error('[AI] Eroare la generarea raspunsului:', error);
+        await message.reply("Oops! A apărut o eroare la procesarea AI.");
     }
 });
 
-// ... tot restul codului din index.js (functii de fisiere, comenzi slash, serverul web, API-urile) ramane aici ...
-// Este important ca tot codul anterior sa ramana neschimbat mai jos.
-
-// --- FUNCTII AJUTATOARE PENTRU A LUCRA CU FISIERE ---
-function readJSONFile(filePath) { /* ... cod existent ... */ }
-function writeJSONFile(filePath, data) { /* ... cod existent ... */ }
-async function saveArticle(articleData) { /* ... cod existent ... */ }
-client.on('interactionCreate', async interaction => { /* ... cod existent ... */ });
+// --- INITIALIZARE SERVER WEB ---
 const app = express();
 app.use(express.static('public'));
 app.use(express.json());
-const port = 3000;
-app.get('/api/articles', async (req, res) => { /* ... cod existent ... */ });
-app.post('/api/articles', async (req, res) => { /* ... cod existent ... */ });
-app.get('/api/articles/:id', async (req, res) => { /* ... cod existent ... */ });
-app.get('/api/comments/:articleId', async (req, res) => { /* ... cod existent ... */ });
-app.post('/api/comments/:articleId', async (req, res) => { /* ... cod existent ... */ });
+
+// === MODIFICAREA CHEIE ESTE AICI ===
+// Spunem serverului sa foloseasca portul dat de Render, sau 3000 daca ruleaza local.
+const port = process.env.PORT || 3000;
+
+// --- API (RUTE) PENTRU SITE ---
+// ... tot restul rutelor tale (API-urile) raman la fel ...
 app.post('/api/register', async (req, res) => { /* ... cod existent ... */ });
 app.post('/api/login', async (req, res) => { /* ... cod existent ... */ });
-app.get('/members/:guildId', async (req, res) => { /* ... cod existent ... */ });
-app.post('/kick', async (req, res) => { /* ... cod existent ... */ });
-app.post('/ban', async (req, res) => { /* ... cod existent ... */ });
-app.post('/announcement', async (req, res) => { /* ... cod existent ... */ });
-const start = async () => { /* ... cod existent ... */ };
+app.get('/api/articles', async (req, res) => { /* ... cod existent ... */ });
+// etc.
+
+// --- PORNIREA APLICATIEI ---
+const start = async () => {
+    try {
+        await client.login(process.env.DISCORD_TOKEN); 
+        app.listen(port, () => console.log(`[SERVER] Serverul web ascultă pe portul ${port}`));
+    } catch (error) {
+        console.error("Eroare la pornirea aplicatiei:", error);
+    }
+};
+
 start();
+
+// Functiile ajutatoare (readJSONFile, writeJSONFile, saveArticle, etc.) raman la fel
