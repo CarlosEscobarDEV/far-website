@@ -18,7 +18,6 @@ if (!process.env.GEMINI_API_KEY) {
 const genAI = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
 const aiModel = genAI ? genAI.getGenerativeModel({
     model: "gemini-1.5-flash",
-    // === AICI DEFINIM NOUA PERSONALITATE A AI-ului ===
     systemInstruction: `Te numești FARAI și ești asistentul AI al comunității "Frutiger Aero Romania". Vorbești exclusiv în limba română. Ești un expert entuziast și nostalgic despre estetica Frutiger Aero și despre brandurile și magazinele vechi din România (anii 1990-2010), precum Domo, Flanco, Real, PIC, Billa, Romtelecom etc. Răspunsurile tale trebuie să fie mereu pozitive, informative și să evoce un sentiment de nostalgie plăcută. Folosește un limbaj prietenos și uneori amuzant. Cunoști toate detaliile despre aceste branduri și istoria lor în România. Nu menționa niciodată că ești un model lingvistic sau un AI; acționează ca un membru pasionat al comunității pe nume FARAI.`,
 }) : null;
 
@@ -35,45 +34,79 @@ const client = new Client({
 });
 client.once('ready', () => { console.log(`[BOT] Bot-ul este online! Conectat ca ${client.user.tag}`); });
 
-// --- GESTIONAREA MESAJELOR PENTRU AI CU MEMORIE ---
+// --- GESTIONAREA MESAJELOR: AI & MODERARE ---
 client.on('messageCreate', async message => {
-    if (message.author.bot || !message.mentions.has(client.user) || !aiModel) return;
+    if (message.author.bot) return;
 
-    console.log(`[AI] Primit mentiune de la: ${message.author.tag} in canalul ${message.channel.id}`);
-    await message.channel.sendTyping();
+    // --- PARTEA 1: Functionalitatea AI (daca bot-ul este mentionat) ---
+    if (message.mentions.has(client.user)) {
+        if (!aiModel) return message.reply("Modulul AI nu este configurat corect.");
 
-    const channelId = message.channel.id;
-    const prompt = message.content.replace(/<@!?\d+>/g, '').trim();
+        console.log(`[AI] Primit mentiune de la: ${message.author.tag} in canalul ${message.channel.id}`);
+        await message.channel.sendTyping();
 
-    if (!conversationHistory.has(channelId)) {
-        conversationHistory.set(channelId, []);
+        const channelId = message.channel.id;
+        const prompt = message.content.replace(/<@!?\d+>/g, '').trim();
+
+        if (!conversationHistory.has(channelId)) {
+            conversationHistory.set(channelId, []);
+        }
+        const history = conversationHistory.get(channelId);
+
+        try {
+            const chat = aiModel.startChat({ history });
+            const result = await chat.sendMessage(prompt);
+            const text = result.response.text();
+            
+            history.push({ role: "user", parts: [{ text: prompt }] });
+            history.push({ role: "model", parts: [{ text: text }] });
+
+            if(history.length > 10) conversationHistory.set(channelId, history.slice(-10));
+
+            await message.reply(text.substring(0, 2000));
+        } catch (error) {
+            console.error('[AI] Eroare la generarea raspunsului:', error);
+            await message.reply("Oops! Am o mică eroare de sistem și nu pot procesa acum.");
+        }
+        return; // Oprim executia aici, deoarece a fost o comanda AI
     }
-    const history = conversationHistory.get(channelId);
+
+    // --- PARTEA 2: Comenzi de Moderare (daca bot-ul NU este mentionat) ---
+    const authorMember = message.member;
+    const hasPermission = authorMember.roles.cache.some(role => ALLOWED_ROLES.includes(role.id));
+    
+    // Daca mesajul nu contine o mentiune si autorul nu are permisiuni, ignoram complet
+    if (!hasPermission) return;
+
+    const targetMember = message.mentions.members.first();
+    // Daca un moderator a scris, dar nu a mentionat pe nimeni, ignoram
+    if (!targetMember) return;
+    
+    const content = message.content.toLowerCase();
 
     try {
-        const chat = aiModel.startChat({
-            history: history,
-            generationConfig: {
-                maxOutputTokens: 1800,
-            },
-        });
-
-        const result = await chat.sendMessage(prompt);
-        const response = await result.response;
-        const text = response.text();
-        
-        history.push({ role: "user", parts: [{ text: prompt }] });
-        history.push({ role: "model", parts: [{ text: text }] });
-
-        if(history.length > 10) {
-            conversationHistory.set(channelId, history.slice(-10));
+        if (content.includes('kick') || content.includes('da-i kick')) {
+            await targetMember.kick("Acțiune de moderare din chat.");
+            await message.reply(`✅ Gata! L-am dat afară pe ${targetMember.user.tag}.`);
+        } 
+        else if (content.includes('ban') || content.includes('da-i ban')) {
+            await targetMember.ban({ reason: "Acțiune de moderare din chat." });
+            await message.reply(`✅ Gata! I-am dat ban lui ${targetMember.user.tag}. Acesta nu va mai putea reveni.`);
+        } 
+        else if (content.includes('schimbă nickname-ul') || content.includes('schimba nickname-ul')) {
+            // Cautam textul dintre ghilimele de dupa cuvantul "în" sau "in"
+            const match = message.content.match(/(?:în|in)\s+"([^"]+)"/i);
+            if (match && match[1]) {
+                const newNickname = match[1];
+                await targetMember.setNickname(newNickname);
+                await message.reply(`✅ Gata! Am schimbat nickname-ul lui ${targetMember.user.tag} în "${newNickname}".`);
+            } else {
+                await message.reply('Format incorect. Te rog folosește: `schimbă nickname-ul lui @user în "Noul Nickname"`');
+            }
         }
-
-        await message.reply(text.substring(0, 2000));
-
     } catch (error) {
-        console.error('[AI] Eroare la generarea raspunsului:', error);
-        await message.reply("Oops! Am o mică eroare de sistem și nu pot procesa acum. Încearcă din nou puțin mai târziu.");
+        console.error('[MODERATION] Eroare la executarea comenzii:', error);
+        await message.reply(`❌ Nu am putut executa comanda. Verifică dacă am permisiunile necesare sau dacă rolul meu este mai înalt decât al membrului respectiv.`);
     }
 });
 
@@ -85,6 +118,7 @@ app.use(express.json());
 const port = process.env.PORT || 3000;
 
 // --- TOATE API-URILE SI FUNCTIILE DE MAI JOS RAMAN NESCHIMBATE ---
+// ... (restul codului pentru API, citire/scriere fisiere, etc. ramane aici)
 function readJSONFile(filePath) {
     return new Promise((resolve, reject) => {
         fs.readFile(filePath, 'utf8', (err, data) => {
