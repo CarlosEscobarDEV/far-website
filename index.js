@@ -119,6 +119,38 @@ const port = process.env.PORT || 3000;
 // --- API (RUTE) PENTRU SITE ---
 console.log('[SERVER] Se configurează rutele API...');
 
+// RUTA NOUA: API pentru chatbot-ul de pe site
+app.post('/api/chat', async (req, res) => {
+    console.log('[API CHAT] Primit mesaj nou pentru Jones.');
+    const { message, history } = req.body;
+
+    if (!message) {
+        return res.status(400).send({ error: 'Mesajul nu poate fi gol.' });
+    }
+
+    if (!aiModel) {
+        return res.status(503).send({ error: 'Modulul AI nu este disponibil momentan.' });
+    }
+
+    try {
+        // Folosim un istoric primit de la frontend pentru a mentine continuitatea
+        const chat = aiModel.startChat({
+            history: history || [],
+        });
+
+        const result = await chat.sendMessage(message);
+        const response = await result.response;
+        const text = response.text();
+
+        res.status(200).send({ reply: text });
+
+    } catch (error) {
+        console.error('[API CHAT] Eroare la generarea raspunsului:', error);
+        res.status(500).send({ error: 'Oops! Jones are o mica eroare de sistem si nu poate raspunde acum.' });
+    }
+});
+
+
 // === RUTE PENTRU ADMIN MANAGEMENT (REPARATE SI COMPLETE) ===
 app.get('/members/:guildId', async (req, res) => {
     try {

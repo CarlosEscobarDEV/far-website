@@ -84,6 +84,103 @@
         .store-button { display: inline-block; background: linear-gradient(to bottom, #1E90FF, #1C86EE); color: white; padding: 0.5rem 1rem; border-radius: 5px; font-weight: bold; transition: all 0.2s; }
         .store-button:hover { transform: scale(1.05); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         .site-footer { text-align: center; padding: 1rem; color: #6C757D; font-size: 0.9rem; margin-top: auto; }
+
+        /* === STILURI NOI PENTRU CHATBOT (ADĂUGATE AICI) === */
+        #chat-bubble {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, #00C6FF, #0072FF);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0, 114, 255, 0.4);
+            transition: transform 0.2s ease-in-out;
+            z-index: 999;
+        }
+        #chat-bubble:hover {
+            transform: scale(1.1);
+        }
+        #chat-window {
+            position: fixed;
+            bottom: 7rem;
+            right: 2rem;
+            width: 90%;
+            max-width: 380px;
+            height: 500px;
+            background: rgba(230, 245, 255, 0.8);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            z-index: 998;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            pointer-events: none;
+        }
+        #chat-window.open {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: all;
+        }
+        #chat-header {
+            padding: 0.75rem;
+            background: linear-gradient(to right, #1E90FF, #3AAFFF);
+            color: white;
+            font-weight: bold;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+        #chat-messages {
+            flex-grow: 1;
+            padding: 1rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .chat-message {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            max-width: 80%;
+            line-height: 1.4;
+        }
+        .user-message {
+            background-color: #0072FF;
+            color: white;
+            border-bottom-right-radius: 5px;
+            align-self: flex-end;
+        }
+        .jones-message {
+            background-color: white;
+            color: #333;
+            border: 1px solid #ddd;
+            border-bottom-left-radius: 5px;
+            align-self: flex-start;
+        }
+        #chat-form {
+            display: flex;
+            padding: 0.5rem;
+            border-top: 1px solid rgba(0, 114, 255, 0.2);
+        }
+        #chat-input {
+            flex-grow: 1;
+            border: 1px solid #ccc;
+            border-radius: 20px;
+            padding: 0.5rem 1rem;
+            background-color: white;
+        }
+        #chat-input:focus {
+            outline: none;
+            border-color: #0072FF;
+        }
     </style>
 </head>
 <body class="flex flex-col">
@@ -141,12 +238,27 @@
         </div>
     </div>
     
-    <!-- Footer nou fara link de admin -->
+    <!-- Footer -->
     <footer class="site-footer">
         <p>&copy; 2024 Frutiger Aero Romania. Toate drepturile rezervate.</p>
     </footer>
     
+    <!-- === ELEMENTE NOI PENTRU CHATBOT === -->
+    <div id="chat-bubble">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.08-3.242A8.995 8.995 0 012 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM4.417 11.583A7.002 7.002 0 0010 15c3.313 0 6-2.687 6-6s-2.687-6-6-6-6 2.687-6 6c0 1.298.366 2.525.996 3.583l-1.077 3.232 3.498-1.234z" clip-rule="evenodd" />
+        </svg>
+    </div>
+    <div id="chat-window">
+        <div id="chat-header">Convorbire cu Jones</div>
+        <div id="chat-messages"></div>
+        <form id="chat-form">
+            <input id="chat-input" type="text" placeholder="Scrie un mesaj..." autocomplete="off">
+        </form>
+    </div>
+
     <script>
+        // === SCRIPTURI COMBINATE PENTRU PAGINA PRINCIPALA ===
         const userNavSection = document.getElementById('user-nav-section');
         function updateHeader() {
             const userData = localStorage.getItem('far_user');
@@ -168,7 +280,72 @@
                 `;
             }
         }
-        document.addEventListener('DOMContentLoaded', updateHeader);
+        
+        const chatBubble = document.getElementById('chat-bubble');
+        const chatWindow = document.getElementById('chat-window');
+        const chatForm = document.getElementById('chat-form');
+        const chatInput = document.getElementById('chat-input');
+        const chatMessages = document.getElementById('chat-messages');
+        let chatHistory = [];
+
+        chatBubble.addEventListener('click', () => {
+            chatWindow.classList.toggle('open');
+            if (chatWindow.classList.contains('open')) { chatInput.focus(); }
+        });
+
+        function addMessage(sender, text) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chat-message ${sender === 'user' ? 'user-message' : 'jones-message'}`;
+            messageDiv.textContent = text;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function welcomeMessage() {
+            if (sessionStorage.getItem('jones_welcomed')) return;
+            setTimeout(() => {
+                const welcomeText = "Salut! Sunt Jones, bine ai venit în arhiva FAR! Căutai ceva anume sau vrei doar să depănăm amintiri?";
+                addMessage('jones', welcomeText);
+                chatHistory.push({ role: "model", parts: [{ text: welcomeText }] });
+                sessionStorage.setItem('jones_welcomed', 'true');
+            }, 1500);
+        }
+        
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const userMessage = chatInput.value.trim();
+            if (!userMessage) return;
+            addMessage('user', userMessage);
+            chatInput.value = '';
+            const typingIndicator = document.createElement('div');
+            typingIndicator.className = 'chat-message jones-message';
+            typingIndicator.textContent = '...';
+            chatMessages.appendChild(typingIndicator);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: userMessage, history: chatHistory })
+                });
+                chatMessages.removeChild(typingIndicator);
+                if (!response.ok) throw new Error('Eroare de la server.');
+                const data = await response.json();
+                addMessage('jones', data.reply);
+                chatHistory.push({ role: "user", parts: [{ text: userMessage }] });
+                chatHistory.push({ role: "model", parts: [{ text: data.reply }] });
+                if(chatHistory.length > 8) { chatHistory = chatHistory.slice(-8); }
+            } catch (error) {
+                console.error("Eroare la chat:", error);
+                addMessage('jones', 'Oops, am o problemă tehnică. Încearcă din nou puțin mai târziu.');
+            }
+        });
+
+        // RULAREA FUNCTIILOR LA INCARCAREA PAGINII
+        document.addEventListener('DOMContentLoaded', () => {
+            updateHeader();
+            welcomeMessage();
+        });
     </script>
 </body>
 </html>
