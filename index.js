@@ -55,10 +55,9 @@ const client = new Client({
 });
 client.once('ready', () => { console.log(`[BOT] Bot-ul este online! Conectat ca ${client.user.tag}`); });
 
-// --- GESTIONAREA MESAJELOR PENTRU AI (CU VIZIUNE - LOGICA REPARATA) ---
+// --- GESTIONAREA MESAJELOR PENTRU AI ---
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
-
     let shouldEngage = false;
     if (message.mentions.has(client.user.id)) { shouldEngage = true; }
     if (message.reference) {
@@ -83,69 +82,86 @@ client.on('messageCreate', async message => {
     try {
         const imageParts = [];
         if (message.attachments.size > 0) {
-            for (const attachment of message.attachments.values()) {
-                if (attachment.contentType && attachment.contentType.startsWith('image/')) {
-                    console.log(`[AI] Procesez imaginea: ${attachment.url}`);
-                    const response = await axios.get(attachment.url, { responseType: 'arraybuffer' });
-                    imageParts.push({
-                        inlineData: {
-                            mimeType: attachment.contentType,
-                            data: Buffer.from(response.data).toString('base64'),
-                        },
-                    });
-                    break; // Procesam doar prima imagine pentru a fi eficienti
-                }
+            const attachment = message.attachments.first();
+            if (attachment.contentType && attachment.contentType.startsWith('image/')) {
+                const response = await axios.get(attachment.url, { responseType: 'arraybuffer' });
+                imageParts.push({
+                    inlineData: {
+                        mimeType: attachment.contentType,
+                        data: Buffer.from(response.data).toString('base64'),
+                    },
+                });
             }
         }
         
-        // Construim "partile" mesajului curent
         const currentUserMessageParts = [];
-        if (promptText) {
-            currentUserMessageParts.push({ text: promptText });
-        }
+        if (promptText) currentUserMessageParts.push({ text: promptText });
         currentUserMessageParts.push(...imageParts);
 
-        // Construim intregul istoric pentru request
-        const contents = [
-            ...history,
-            { role: "user", parts: currentUserMessageParts }
-        ];
-
-        // Apelam AI-ul cu istoricul complet
+        const contents = [...history, { role: "user", parts: currentUserMessageParts }];
         const result = await aiModel.generateContent({ contents });
-        const response = await result.response;
-        const text = response.text();
+        const text = result.response.text();
         
-        // Actualizam istoricul conversatiei
-        history.push({ role: "user", parts: currentUserMessageParts }); 
+        history.push({ role: "user", parts: currentUserMessageParts });
         history.push({ role: "model", parts: [{ text }] });
         conversationHistory.set(message.channel.id, history.length > 10 ? history.slice(-10) : history);
 
         await message.reply(text.substring(0, 2000));
-
     } catch (error) {
         console.error('[AI] Eroare la generarea raspunsului:', error);
-        await message.reply("Oops! Am o mică eroare de sistem și nu pot procesa acum. Poate imaginea este prea complexă sau formatul nu este suportat?");
+        await message.reply("Oops! Am o mică eroare de sistem și nu pot procesa acum.");
     }
 });
 
+// --- FUNCTII AJUTATOARE PENTRU FISIERE ---
+function readJSONFile(filePath) { return new Promise((resolve, reject) => { fs.readFile(filePath, 'utf8', (err, data) => { if (err) return reject(err); try { resolve(JSON.parse(data)); } catch (e) { reject(e); } }); }); }
+function writeJSONFile(filePath, data) { return new Promise((resolve, reject) => { fs.writeFile(filePath, JSON.stringify(data, null, 2), err => { if (err) return reject(err); resolve(); }); }); }
 
-// --- INITIALIZARE SERVER WEB SI RESTUL API-URILOR ---
+// --- INITIALIZARE SERVER WEB ---
 const app = express();
 app.use(express.static('public'));
 app.use(express.json());
 const port = process.env.PORT || 3000;
 
-function readJSONFile(filePath) { return new Promise((resolve, reject) => { fs.readFile(filePath, 'utf8', (err, data) => { if (err) return reject(err); try { resolve(JSON.parse(data)); } catch (e) { reject(e); } }); }); }
-function writeJSONFile(filePath, data) { return new Promise((resolve, reject) => { fs.writeFile(filePath, JSON.stringify(data, null, 2), err => { if (err) return reject(err); resolve(); }); }); }
+// --- API (RUTE) PENTRU SITE ---
+console.log('[SERVER] Se configurează rutele API...');
 
+// === RUTE PENTRU ADMIN MANAGEMENT (REPARATE SI COMPLETE) ===
 app.get('/members/:guildId', async (req, res) => {
     try {
         const guild = await client.guilds.fetch(req.params.guildId);
         await guild.members.fetch();
         const membersList = guild.members.cache.filter(m => !m.user.bot).map(m => ({ id: m.id, name: m.user.tag, displayName: m.displayName }));
         res.status(200).send(membersList);
-    } catch (e) { res.status(500).send({ message: 'Eroare la preluarea membrilor.' }); }
+    } catch (e) { 
+        console.error('[API ERROR] /members:', e);
+        res.status(500).send({ message: 'Eroare la preluarea membrilor.' }); 
+    }
+});
+
+app.post('/kick', async (req, res) => {
+    try {
+        const { guildId, userId, reason } = req.body;
+        const guild = await client.guilds.fetch(guildId);
+        const member = await guild.members.fetch(userId);
+        await member.kick(reason || 'Acțiune de la un administrator.');
+        res.status(200).send({ message: `Membrul ${member.user.tag} a fost dat afară!` });
+    } catch (e) { 
+        console.error('[API ERROR] /kick:', e);
+        res.status(500).send({ message: 'Nu s-a putut da kick membrului.' }); 
+    }
+});
+
+app.post('/ban', async (req, res) => {
+    try {
+        const { guildId, userId, reason } = req.body;
+        const guild = await client.guilds.fetch(guildId);
+        await guild.members.ban(userId, { reason: reason || 'Acțiune de la un administrator.' });
+        res.status(200).send({ message: `Utilizatorul cu ID ${userId} a primit BAN!` });
+    } catch (e) { 
+        console.error('[API ERROR] /ban:', e);
+        res.status(500).send({ message: 'Nu s-a putut da ban membrului.' }); 
+    }
 });
 
 app.post('/announcement', async (req, res) => {
@@ -153,7 +169,6 @@ app.post('/announcement', async (req, res) => {
         const { title, message, author } = req.body;
         if (!title || !message) return res.status(400).send({ message: 'Lipsesc titlul sau mesajul.' });
         const channel = await client.channels.fetch(ANNOUNCEMENT_CHANNEL_ID);
-        if (!channel) return res.status(404).send({ message: 'Canalul de anunturi nu a fost găsit.' });
         const footerText = `Mesaj trimis de: Consilier de Securitate ${author || 'Necunoscut'}`;
         const embed = new EmbedBuilder().setColor('#0099ff').setTitle(`📢 ${title}`).setDescription(message).setTimestamp().setFooter({ text: footerText });
         await channel.send({ embeds: [embed] });
@@ -163,7 +178,17 @@ app.post('/announcement', async (req, res) => {
         res.status(500).send({ message: 'Nu s-a putut trimite anunțul.' });
     }
 });
-// (Restul API-urilor raman neschimbate)
+
+// === RESTUL API-URILOR (USERS, ARTICLES, ETC) ===
+app.post('/api/register', async (req, res) => { /* ... cod existent ... */ });
+app.post('/api/login', async (req, res) => { /* ... cod existent ... */ });
+app.get('/api/articles', async (req, res) => { /* ... cod existent ... */ });
+app.get('/api/articles/:id', async (req, res) => { /* ... cod existent ... */ });
+app.post('/api/articles', async (req, res) => { /* ... cod existent ... */ });
+app.get('/api/comments/:articleId', async (req, res) => { /* ... cod existent ... */ });
+app.post('/api/comments/:articleId', async (req, res) => { /* ... cod existent ... */ });
+
+// --- PORNIREA APLICATIEI ---
 const start = async () => {
     try {
         await client.login(process.env.DISCORD_TOKEN);
