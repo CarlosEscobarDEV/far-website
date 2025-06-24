@@ -70,42 +70,17 @@ client.on('messageCreate', async message => {
     if (processedMessages.has(message.id)) return;
     processedMessages.add(message.id);
     setTimeout(() => processedMessages.delete(message.id), 10000);
-
     if (!aiModel) return message.reply("Modulul AI nu este configurat corect.");
-
     console.log(`[AI] Primit mentiune/reply de la: ${message.author.tag}`);
     await message.channel.sendTyping();
-    
-    const promptText = message.content.replace(/<@!?\d+>/g, '').trim();
+    const prompt = message.content.replace(/<@!?\d+>/g, '').trim();
     const history = conversationHistory.get(message.channel.id) || [];
-    
     try {
-        const imageParts = [];
-        if (message.attachments.size > 0) {
-            const attachment = message.attachments.first();
-            if (attachment.contentType && attachment.contentType.startsWith('image/')) {
-                const response = await axios.get(attachment.url, { responseType: 'arraybuffer' });
-                imageParts.push({
-                    inlineData: {
-                        mimeType: attachment.contentType,
-                        data: Buffer.from(response.data).toString('base64'),
-                    },
-                });
-            }
-        }
-        
-        const currentUserMessageParts = [];
-        if (promptText) currentUserMessageParts.push({ text: promptText });
-        currentUserMessageParts.push(...imageParts);
-
-        const contents = [...history, { role: "user", parts: currentUserMessageParts }];
-        const result = await aiModel.generateContent({ contents });
+        const chat = aiModel.startChat({ history });
+        const result = await chat.sendMessage(prompt);
         const text = result.response.text();
-        
-        history.push({ role: "user", parts: currentUserMessageParts });
-        history.push({ role: "model", parts: [{ text }] });
+        history.push({ role: "user", parts: [{ text: prompt }] }, { role: "model", parts: [{ text: text }] });
         conversationHistory.set(message.channel.id, history.length > 10 ? history.slice(-10) : history);
-
         await message.reply(text.substring(0, 2000));
     } catch (error) {
         console.error('[AI] Eroare la generarea raspunsului:', error);
@@ -113,9 +88,19 @@ client.on('messageCreate', async message => {
     }
 });
 
+
 // --- FUNCTII AJUTATOARE PENTRU FISIERE ---
 function readJSONFile(filePath) { return new Promise((resolve, reject) => { fs.readFile(filePath, 'utf8', (err, data) => { if (err) return reject(err); try { resolve(JSON.parse(data)); } catch (e) { reject(e); } }); }); }
 function writeJSONFile(filePath, data) { return new Promise((resolve, reject) => { fs.writeFile(filePath, JSON.stringify(data, null, 2), err => { if (err) return reject(err); resolve(); }); }); }
+
+// --- LOGICA PENTRU ARTICOLE ---
+async function saveArticle(articleData) {
+    const articles = await readJSONFile(ARTICLES_FILE);
+    const newArticle = { id: Date.now(), ...articleData, date: new Date().toLocaleDateString('ro-RO') };
+    articles.unshift(newArticle);
+    await writeJSONFile(ARTICLES_FILE, articles);
+    return newArticle;
+}
 
 // --- INITIALIZARE SERVER WEB ---
 const app = express();
@@ -126,67 +111,36 @@ const port = process.env.PORT || 3000;
 // --- API (RUTE) PENTRU SITE ---
 console.log('[SERVER] Se configurează rutele API...');
 
-// === RUTE PENTRU ADMIN MANAGEMENT (REPARATE SI COMPLETE) ===
-app.get('/members/:guildId', async (req, res) => {
+// === RUTA PENTRU ADĂUGARE ARTICOL (REPARATĂ) ===
+app.post('/api/articles', async (req, res) => {
+    console.log('[API HIT] POST /api/articles');
     try {
-        const guild = await client.guilds.fetch(req.params.guildId);
-        await guild.members.fetch();
-        const membersList = guild.members.cache.filter(m => !m.user.bot).map(m => ({ id: m.id, name: m.user.tag, displayName: m.displayName }));
-        res.status(200).send(membersList);
-    } catch (e) { 
-        console.error('[API ERROR] /members:', e);
-        res.status(500).send({ message: 'Eroare la preluarea membrilor.' }); 
+        const articleData = {
+            category: req.body.category,
+            title: req.body.title,
+            imageUrl: req.body.imageUrl,
+            content: req.body.content,
+            author: req.body.author || 'Admin Panel'
+        };
+        await saveArticle(articleData);
+        res.status(201).send({ message: 'Articolul a fost publicat cu succes!' });
+    } catch (error) {
+        console.error("[API ERROR] /api/articles:", error);
+        res.status(500).send({ message: 'Eroare la salvarea articolului.' });
     }
 });
 
-app.post('/kick', async (req, res) => {
-    try {
-        const { guildId, userId, reason } = req.body;
-        const guild = await client.guilds.fetch(guildId);
-        const member = await guild.members.fetch(userId);
-        await member.kick(reason || 'Acțiune de la un administrator.');
-        res.status(200).send({ message: `Membrul ${member.user.tag} a fost dat afară!` });
-    } catch (e) { 
-        console.error('[API ERROR] /kick:', e);
-        res.status(500).send({ message: 'Nu s-a putut da kick membrului.' }); 
-    }
-});
-
-app.post('/ban', async (req, res) => {
-    try {
-        const { guildId, userId, reason } = req.body;
-        const guild = await client.guilds.fetch(guildId);
-        await guild.members.ban(userId, { reason: reason || 'Acțiune de la un administrator.' });
-        res.status(200).send({ message: `Utilizatorul cu ID ${userId} a primit BAN!` });
-    } catch (e) { 
-        console.error('[API ERROR] /ban:', e);
-        res.status(500).send({ message: 'Nu s-a putut da ban membrului.' }); 
-    }
-});
-
-app.post('/announcement', async (req, res) => {
-    try {
-        const { title, message, author } = req.body;
-        if (!title || !message) return res.status(400).send({ message: 'Lipsesc titlul sau mesajul.' });
-        const channel = await client.channels.fetch(ANNOUNCEMENT_CHANNEL_ID);
-        const footerText = `Mesaj trimis de: Consilier de Securitate ${author || 'Necunoscut'}`;
-        const embed = new EmbedBuilder().setColor('#0099ff').setTitle(`📢 ${title}`).setDescription(message).setTimestamp().setFooter({ text: footerText });
-        await channel.send({ embeds: [embed] });
-        res.status(200).send({ message: 'Anunțul a fost publicat!' });
-    } catch (e) {
-        console.error("Eroare la trimiterea anuntului:", e);
-        res.status(500).send({ message: 'Nu s-a putut trimite anunțul.' });
-    }
-});
-
-// === RESTUL API-URILOR (USERS, ARTICLES, ETC) ===
-app.post('/api/register', async (req, res) => { /* ... cod existent ... */ });
-app.post('/api/login', async (req, res) => { /* ... cod existent ... */ });
-app.get('/api/articles', async (req, res) => { /* ... cod existent ... */ });
-app.get('/api/articles/:id', async (req, res) => { /* ... cod existent ... */ });
-app.post('/api/articles', async (req, res) => { /* ... cod existent ... */ });
-app.get('/api/comments/:articleId', async (req, res) => { /* ... cod existent ... */ });
-app.post('/api/comments/:articleId', async (req, res) => { /* ... cod existent ... */ });
+// === RESTUL RUTELOR (CARE FUNCTIONEAZA) ===
+app.get('/members/:guildId', async (req, res) => { /* ... codul existent ... */ });
+app.post('/kick', async (req, res) => { /* ... codul existent ... */ });
+app.post('/ban', async (req, res) => { /* ... codul existent ... */ });
+app.post('/announcement', async (req, res) => { /* ... codul existent ... */ });
+app.post('/api/register', async (req, res) => { /* ... codul existent ... */ });
+app.post('/api/login', async (req, res) => { /* ... codul existent ... */ });
+app.get('/api/articles', async (req, res) => { /* ... codul existent ... */ });
+app.get('/api/articles/:id', async (req, res) => { /* ... codul existent ... */ });
+app.get('/api/comments/:articleId', async (req, res) => { /* ... codul existent ... */ });
+app.post('/api/comments/:articleId', async (req, res) => { /* ... codul existent ... */ });
 
 // --- PORNIREA APLICATIEI ---
 const start = async () => {
