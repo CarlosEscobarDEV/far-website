@@ -4,6 +4,7 @@ const express = require('express');
 const fs = require('fs');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const axios = require('axios');
+const bcrypt = require('bcrypt');
 
 // --- CONFIGURARE GENERALA ---
 const ARTICLES_FILE = './articles.json';
@@ -160,28 +161,79 @@ app.post('/announcement', async (req, res) => {
 });
 
 // === RESTUL API-URILOR (USERS, ARTICLES, ETC) ===
+// RUTA NOUA: Inregistrarea unui utilizator nou (cu parola criptata)
 app.post('/api/register', async (req, res) => {
     try {
         const { username, password } = req.body;
-        if (!username || !password) return res.status(400).send({ message: 'Numele și parola sunt obligatorii.' });
+        if (!username || !password) {
+            return res.status(400).send({ message: 'Numele de utilizator și parola sunt obligatorii.' });
+        }
+
         const users = await readJSONFile(USERS_FILE);
-        if (users.find(u => u.username.toLowerCase() === username.toLowerCase())) return res.status(409).send({ message: 'Nume de utilizator deja folosit.' });
-        users.push({ id: Date.now(), username, password });
+
+        // Verificam daca utilizatorul exista deja
+        const existingUser = users.find(user => user.username.toLowerCase() === username.toLowerCase());
+        if (existingUser) {
+            return res.status(409).send({ message: 'Acest nume de utilizator este deja folosit.' });
+        }
+
+        // AICI ESTE MAGIA: Criptam parola inainte de a o salva
+        const hashedPassword = await bcrypt.hash(password, 10); // Criptam parola
+
+        const newUser = {
+            id: Date.now(),
+            username: username,
+            password: hashedPassword // Salvam parola criptata, nu cea reala
+        };
+
+        users.push(newUser);
         await writeJSONFile(USERS_FILE, users);
-        res.status(201).send({ message: 'Cont creat cu succes!' });
-    } catch (e) { res.status(500).send({ message: 'Eroare la înregistrare.' }); }
+
+        console.log(`[AUTH] Utilizator nou inregistrat: ${username}`);
+        res.status(201).send({ message: 'Contul a fost creat cu succes! Acum te poți autentifica.' });
+
+    } catch (error) {
+        console.error("[AUTH-REGISTER] Eroare:", error);
+        res.status(500).send({ message: 'A apărut o eroare la înregistrare.' });
+    }
 });
 
+// RUTA NOUA: Autentificarea unui utilizator (cu verificare parola criptata)
 app.post('/api/login', async (req, res) => {
     try {
         const { username, password } = req.body;
-        if (!username || !password) return res.status(400).send({ message: 'Numele și parola sunt obligatorii.' });
+        if (!username || !password) {
+            return res.status(400).send({ message: 'Numele de utilizator și parola sunt obligatorii.' });
+        }
+
         const users = await readJSONFile(USERS_FILE);
         const user = users.find(u => u.username.toLowerCase() === username.toLowerCase());
-        if (!user || user.password !== password) return res.status(401).send({ message: 'Nume sau parolă incorectă.' });
-        res.status(200).send({ id: user.id, username: user.username });
-    } catch (e) { res.status(500).send({ message: 'Eroare la autentificare.' }); }
+
+        // Daca utilizatorul nu exista, trimitem o eroare generica
+        if (!user) {
+            return res.status(401).send({ message: 'Nume de utilizator sau parolă incorectă.' });
+        }
+
+        // AICI ESTE A DOUA PARTE A MAGIEI: Comparam parola introdusa cu cea criptata
+        const isPasswordCorrect = await bcrypt.compare(password, user.password);
+
+        if (!isPasswordCorrect) {
+            return res.status(401).send({ message: 'Nume de utilizator sau parolă incorectă.' });
+        }
+
+        console.log(`[AUTH] Utilizator autentificat: ${username}`);
+        // Trimitem inapoi doar datele sigure (fara parola)
+        res.status(200).send({
+            id: user.id,
+            username: user.username
+        });
+
+    } catch (error) {
+        console.error("[AUTH-LOGIN] Eroare:", error);
+        res.status(500).send({ message: 'A apărut o eroare la autentificare.' });
+    }
 });
+
 
 app.post('/api/articles', async (req, res) => {
     try {
