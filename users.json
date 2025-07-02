@@ -1,1 +1,32 @@
-[]
+[
+  {
+    "id": "admin_1751478371367_0.20524864746271132",
+    "username": "yudenwa16",
+    "password": "$2b$10$qzdR5Zv4L.uzqX9UQuPOVeVjtNQZBsUrMUn.zso/5d45wmn0V14Fu",
+    "role": "admin"
+  },
+  {
+    "id": "admin_1751478371414_0.29030196082822957",
+    "username": "andrabanana",
+    "password": "$2b$10$VWNKF2CHO4zLAjT/KHrR1eawPIEnQ/qM5h5h.Uladcqh2pbqE6MLS",
+    "role": "admin"
+  },
+  {
+    "id": "admin_1751478371461_0.6932700647158518",
+    "username": "nfornuggies",
+    "password": "$2b$10$LWe.QytOIVdLuCen8KRER.gxqQVyb/3u8dlzjb7hBP2Vc1K9O4wSa",
+    "role": "admin"
+  },
+  {
+    "id": "admin_1751478371508_0.9846520457527574",
+    "username": "skittle",
+    "password": "$2b$10$mRPDP8r0jwV65IjRp.XsJudKVIpciFUI6kQB6i25zJtCI69bG.xhe",
+    "role": "admin"
+  },
+  {
+    "id": "admin_1751478371555_0.07351963209297896",
+    "username": "kinkrar",
+    "password": "$2b$10$Dz5P5Zr8SNuPA59g90DV4uJ8qU1DwE.VtOWn61zYQHxPeeLGV.OAC",
+    "role": "admin"
+  }
+]

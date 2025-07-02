@@ -52,28 +52,47 @@
             <div><button type="submit" class="w-full login-button">ACCES</button></div>
         </form>
     </div>
+
     <script>
-        // === LISTA DE ADMINI A FOST ACTUALIZATA AICI ===
-        const adminUsers = {
-            'yudenwa16': 'antemie1',
-            'andrabanana': '010R1',
-            'nfornuggies': '22o102Y',
-            'kinkrar': 'antemie1122'
-        };
+        // === SCRIPTUL A FOST COMPLET MODIFICAT ===
+        // Nu mai exista parole in clar aici!
 
         const loginForm = document.getElementById('login-form');
         const errorMessage = document.getElementById('error-message');
-        loginForm.addEventListener('submit', (event) => {
+
+        loginForm.addEventListener('submit', async (event) => {
             event.preventDefault();
             const username = loginForm.username.value;
             const password = loginForm.password.value;
-            if (adminUsers[username] && adminUsers[username] === password) {
-                // Salvam numele utilizatorului, nu doar "true"
-                const adminData = { username: username };
-                sessionStorage.setItem('far_admin_user', JSON.stringify(adminData));
-                window.location.href = '/admin.html';
-            } else {
-                errorMessage.textContent = 'Utilizator sau parolă incorectă.';
+
+            try {
+                // Trimitem datele la server pentru verificare
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    // Daca serverul raspunde cu o eroare (ex: 401 Unauthorized), o afisam
+                    throw new Error(result.message || 'A apărut o eroare.');
+                }
+                
+                // Verificam daca utilizatorul este admin
+                if (result.isAdmin) {
+                    // Daca este admin, salvam datele si redirectionam
+                    const adminData = { username: result.username };
+                    sessionStorage.setItem('far_admin_user', JSON.stringify(adminData));
+                    window.location.href = '/admin.html';
+                } else {
+                    // Daca este un utilizator normal, nu ii dam acces la panoul de admin
+                    throw new Error('Nu aveți permisiunile necesare pentru a accesa acest panou.');
+                }
+
+            } catch (error) {
+                errorMessage.textContent = error.message;
                 errorMessage.classList.remove('hidden');
             }
         });
